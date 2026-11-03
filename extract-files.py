@@ -33,13 +33,8 @@ def lib_fixup_prebuilt_suffix(lib: str, *args, **kwargs):
     return f'{lib}_prebuilt'
 
 
-def lib_fixup_xiaomi_suffix(lib: str, *args, **kwargs):
-    return f'{lib}_xiaomi'
-
-
 lib_fixups: lib_fixups_user_type = {
     **base_lib_fixups,
-    'audio.primary.taro': lib_fixup_xiaomi_suffix,
     'libgrpc++_unsecure': lib_fixup_prebuilt_suffix,
     (
         'com.qualcomm.qti.dpm.api@1.0',
@@ -62,7 +57,6 @@ lib_fixups: lib_fixups_user_type = {
         'vendor.qti.ims.*',
         'vendor.qti.latency*',
         'vendor.xiaomi.hardware.campostproc@1.0',
-        'vendor.xiaomi.hardware.displayfeature@1.0',
     ): lib_fixup_vendor_suffix,
     'libwpa_client': lib_fixup_remove,
 }

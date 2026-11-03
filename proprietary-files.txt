@@ -151,7 +151,7 @@ vendor/firmware/TL-handset.txt
 vendor/firmware/TL-music.txt
 
 # Audio HAL
-vendor/lib64/hw/audio.primary.taro.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=audio.primary.taro
+vendor/lib64/hw/audio.primary.taro.so
 vendor/lib64/hw/gyro_fusion_interface.so
 vendor/lib64/hw/sound_trigger.primary.taro.so
 vendor/lib64/libaudio_log_utils.so
@@ -944,11 +944,11 @@ vendor/lib64/libclient2slpi.notifier.so
 vendor/lib64/libdisplayconfig.qti.so
 vendor/lib64/libhdrdynamic.so
 vendor/lib64/libhdrdynamicootf.so
-vendor/lib64/libsdedrm.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=libsdedrm
-vendor/lib64/libsdm-disp-vndapis.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=libsdm-disp-vndapis
-vendor/lib64/libsdmcore.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=libsdmcore
-vendor/lib64/libsdmextension.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=libsdmextension
-vendor/lib64/libsdmutils.so;MODULE_SUFFIX=_xiaomi;OVERRIDES=libsdmutils
+vendor/lib64/libsdedrm.so
+vendor/lib64/libsdm-disp-vndapis.so
+vendor/lib64/libsdmcore.so
+vendor/lib64/libsdmextension.so
+vendor/lib64/libsdmutils.so
 
 # Display calibration
 vendor/etc/mdss_dsi_l10_42_02_0a_dsc_cmd_mi.xml
@@ -1009,7 +1009,6 @@ vendor/lib64/libsdr2hdr.so
 vendor/lib64/libsre.so
 vendor/lib64/libtruetone.so
 vendor/lib64/libvideomode.so
-vendor/lib64/vendor.xiaomi.hardware.displayfeature@1.0.so;MODULE_SUFFIX=_vendor
 
 # Dolby
 vendor/etc/dolby/dax-default.xml
