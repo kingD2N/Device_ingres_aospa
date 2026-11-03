@@ -79,13 +79,6 @@ blob_fixups: blob_fixups_user_type = {
         'vendor/lib64/libmiBrightness.so',
         'vendor/lib64/soundfx/libmisoundfx.so',
     ): blob_fixup().replace_needed('libstagefright_foundation.so', 'libstagefright_foundation-v33.so'),
-    # Display
-    'vendor/bin/hw/vendor.qti.hardware.display.composer-service': blob_fixup()
-        .remove_needed('libutils.so')
-        .add_needed('libutils-v32.so')
-        .add_needed('libutils-shim.so')
-        .replace_needed('android.hardware.common-V2-ndk_platform.so', 'android.hardware.common-V2-ndk.so')
-        .replace_needed('vendor.qti.hardware.display.config-V5-ndk_platform.so', 'vendor.qti.hardware.display.config-V5-ndk.so'),
     # Camera
     (
         'vendor/etc/camera/ingres_enhance_motiontuning.xml',
