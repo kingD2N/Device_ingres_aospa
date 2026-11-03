@@ -2,13 +2,15 @@
 #
 # Build Paranoid Android (AOSPA calcite / Android 17) untuk POCO F4 GT (ingres) - satu perintah.
 #
-#   bash build-ingres.sh            # sync + build (otomatis jalan di byobu)
-#   bash build-ingres.sh sync       # hanya sync source
-#   bash build-ingres.sh build      # hanya build (lanjut dari build sebelumnya)
-#   bash build-ingres.sh clean      # hapus hasil build lama (out/) lalu berhenti
-#   bash build-ingres.sh status     # lihat progres build yang sedang jalan
+#   bash build-aospa.sh            # sync + build (otomatis jalan di byobu)
+#   bash build-aospa.sh sync       # hanya sync source
+#   bash build-aospa.sh build      # hanya build (lanjut dari build sebelumnya)
+#   bash build-aospa.sh clean      # hapus hasil build lama (out/) lalu berhenti
+#   bash build-aospa.sh status     # lihat progres build yang sedang jalan
+#   bash build-aospa.sh bersih     # hapus source/hasil ROM lama (LineageOS dll) agar disk lega
+#   bash build-aospa.sh bersih ~/folderlain   # sekalian hapus folder lain yang disebut
 #
-# Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-ingres.sh):
+# Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
 #   SRC=~/aospa        folder source
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=userdebug  userdebug / user / eng
@@ -38,6 +40,44 @@ if [ "$CMD" = "status" ]; then
     fi
     byobu ls 2>/dev/null | grep -q "^$SESSION" && echo "Sesi byobu '$SESSION' masih berjalan." \
         || echo "Tidak ada sesi byobu '$SESSION'."
+    exit 0
+fi
+
+# ------------------------------------------------- bersihkan server
+if [ "$CMD" = "bersih" ]; then
+    shift
+    echo "Ruang disk sekarang:"
+    df -h "$HOME" | tail -n 1
+    echo
+    echo "Isi folder home (terbesar dulu):"
+    du -sh "$HOME"/* "$HOME"/.ccache "$HOME"/.cache 2>/dev/null | sort -rh | head -n 15
+    echo
+    targets=""
+    for d in "$HOME/los24" "$HOME/hasil-los24" "$HOME/build.log" "$HOME/.ccache" "$@"; do
+        [ -e "$d" ] || continue
+        case "$(readlink -f "$d")" in
+            "$(readlink -f "$HOME")"|"$(readlink -f "$SRC")"|"$SCRIPT") echo "Lewati $d (tidak boleh dihapus)"; continue ;;
+        esac
+        targets="$targets $d"
+    done
+    if [ -z "$targets" ]; then
+        ok "Tidak ada folder lama untuk dihapus."
+        exit 0
+    fi
+    echo "Yang akan DIHAPUS PERMANEN:"
+    for d in $targets; do echo "   $d"; done
+    echo "Simpan dulu zip ROM lama (mis. ~/hasil-los24) lewat SFTP kalau masih perlu."
+    read -r -p "Ketik YA lalu Enter untuk menghapus: " jawab
+    [ "$jawab" = "YA" ] || { info "Batal, tidak ada yang dihapus."; exit 0; }
+    for s in los24 penguin aospa; do
+        [ "$s" = "$SESSION" ] && [ -n "${TMUX:-}" ] && continue
+        byobu kill-session -t "$s" >/dev/null 2>&1 && info "Sesi byobu '$s' dihentikan"
+    done
+    info "Menghapus... (bisa 5-20 menit, jangan tutup Termius)"
+    # shellcheck disable=SC2086
+    rm -rf $targets
+    ok "Selesai. Ruang disk sekarang:"
+    df -h "$HOME" | tail -n 1
     exit 0
 fi
 
@@ -95,6 +135,10 @@ do_sync() {
             --git-lfs --no-clone-bundle --depth=1 || { err "repo init gagal"; exit 1; }
     fi
     mkdir -p .repo/local_manifests
+    # local manifest lama (percobaan sebelumnya) bisa bentrok, singkirkan
+    for f in .repo/local_manifests/*.xml; do
+        [ -e "$f" ] && [ "$(basename "$f")" != ingres.xml ] && mv -f "$f" "$f.bak" && info "Menyingkirkan $(basename "$f")"
+    done
     curl -fsSL -o .repo/local_manifests/ingres.xml "$MANIFEST_URL" || { err "Gagal unduh local manifest"; exit 1; }
 
     local n
@@ -164,5 +208,5 @@ case "$CMD" in
         rm -rf "${SRC:?}/out" "$OUT_DIR"
         ok "Bersih. Ruang disk kosong: $(df -h --output=avail "$HOME" | tail -n 1)"
         ;;
-    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | clean | status)"; exit 1 ;;
+    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | clean | status | bersih)"; exit 1 ;;
 esac
