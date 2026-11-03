@@ -134,6 +134,24 @@ check_disk() {
 # hardware/qcom/display* yang tidak ada di display HAL AOSPA calcite-8450
 # (modulnya ada di root namespace) -> soong gagal. Buang import itu.
 VCOMMON_BP="vendor/xiaomi/sm8450-common/Android.bp"
+# folder device/vendor/kernel xiaomi sisa percobaan lama (tidak ada di manifest)
+# tetap dibaca soong -> modul ganda ("multiple rules generate ..."). Pindahkan.
+move_leftovers() {
+    local known d bak="$HOME/aospa-sisa-lama"
+    known=$(repo list -p 2>/dev/null) || return 0
+    [ -n "$known" ] || return 0
+    for d in device/xiaomi/* vendor/xiaomi/* kernel/xiaomi/* hardware/xiaomi*; do
+        [ -d "$d" ] || continue
+        echo "$known" | grep -qx "$d" && continue
+        # folder induk dari repo lain (mis. vendor/xiaomi/camera/...) jangan disentuh
+        echo "$known" | grep -q "^$d/" && continue
+        mkdir -p "$bak/$(dirname "$d")"
+        info "Memindahkan folder sisa lama: $d -> $bak/$d"
+        rm -rf "${bak:?}/$d"
+        mv "$d" "$bak/$d"
+    done
+}
+
 unpatch_source() {
     [ -d vendor/xiaomi/sm8450-common/.git ] || [ -f vendor/xiaomi/sm8450-common/.git ] || return 0
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
@@ -198,6 +216,7 @@ do_sync() {
         info "Mengulang sync repo ingres yang belum lengkap"
         repo sync -c -j1 --force-sync device/xiaomi/ingres device/xiaomi/ingres-kernel vendor/xiaomi/ingres || true
     fi
+    move_leftovers
     patch_source
     ok "Source siap di $SRC"
 }
@@ -214,6 +233,7 @@ do_build() {
     [ "$jobs" -lt 2 ] && jobs=2
     info "Build dengan $jobs job (RAM ${ram_gb} GB, CPU $(nproc) core)"
 
+    move_leftovers
     patch_source
     info "Varian build: $VARIANT"
     set +u   # rom-build.sh / envsetup.sh memakai variabel yang belum diisi
