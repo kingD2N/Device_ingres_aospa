@@ -9,11 +9,14 @@
 #   bash build-aospa.sh status     # lihat progres build yang sedang jalan
 #   bash build-aospa.sh bersih     # hapus source/hasil ROM lama (LineageOS dll) agar disk lega
 #   bash build-aospa.sh bersih ~/folderlain   # sekalian hapus folder lain yang disebut
+#   bash build-aospa.sh upload     # upload ulang isi ~/hasil-aospa ke GoFile
 #
 # Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
 #   SRC=~/aospa        folder source
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=userdebug  userdebug / user / eng
+#   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
+#   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
 set -uo pipefail
 
@@ -195,7 +198,64 @@ do_build() {
     (cd "$OUT_DIR" && sha256sum "$(basename "$zip")" > "$(basename "$zip").sha256")
     ok "BUILD BERHASIL"
     ls -lh "$OUT_DIR"
-    echo "Ambil file di folder ~/hasil-aospa lewat SFTP Termius."
+    if [ "${GOFILE:-1}" != 0 ]; then
+        do_upload || echo "Upload GoFile gagal. Ulangi dengan: bash $SCRIPT upload"
+    else
+        echo "Ambil file di folder ~/hasil-aospa lewat SFTP Termius."
+    fi
+}
+
+# ------------------------------------------------------------- GoFile
+gofile_put() {   # $1=file $2=folderId(opsional) $3=token(opsional) -> JSON
+    local args=(-sS --retry 3 --retry-delay 10 -F "file=@$1")
+    [ -n "$2" ] && args+=(-F "folderId=$2")
+    [ -n "$3" ] && args+=(-H "Authorization: Bearer $3")
+    curl "${args[@]}" https://upload.gofile.io/uploadfile
+}
+
+is_ok() {         # JSON di stdin berstatus ok?
+    python3 -c "import json,sys
+try: sys.exit(0 if json.load(sys.stdin).get('status')=='ok' else 1)
+except Exception: sys.exit(1)"
+}
+
+json_get() {     # $1=key -> nilai dari JSON di stdin (data.<key>)
+    python3 -c "import json,sys
+try: print(json.load(sys.stdin).get('data',{}).get('$1',''))
+except Exception: pass"
+}
+
+do_upload() {
+    local files=() f resp link folder token="${GOFILE_TOKEN:-}" linkfile="$OUT_DIR/link-gofile.txt"
+    for f in "$OUT_DIR"/aospa-*.zip "$OUT_DIR"/*.sha256 "$OUT_DIR"/*.img; do
+        [ -f "$f" ] && files+=("$f")
+    done
+    [ ${#files[@]} -gt 0 ] || { err "Tidak ada file di $OUT_DIR untuk diupload"; return 1; }
+    info "Upload ${#files[@]} file ke GoFile (zip ROM paling lama, sabar)"
+    folder=""; link=""
+    : > "$linkfile"
+    for f in "${files[@]}"; do
+        info "Upload $(basename "$f") ($(du -h "$f" | cut -f1))"
+        resp=$(gofile_put "$f" "$folder" "$token")
+        if ! echo "$resp" | is_ok; then
+            # coba sekali lagi sebagai file terpisah
+            resp=$(gofile_put "$f" "" "${GOFILE_TOKEN:-}")
+        fi
+        if echo "$resp" | is_ok; then
+            [ -n "$folder" ] || folder=$(echo "$resp" | json_get parentFolder)
+            [ -n "$token" ] || token=$(echo "$resp" | json_get guestToken)
+            local page; page=$(echo "$resp" | json_get downloadPage)
+            [ -n "$link" ] || link="$page"
+            echo "$(basename "$f")  $page" >> "$linkfile"
+        else
+            err "Gagal upload $(basename "$f"): $(echo "$resp" | head -c 200)"
+            echo "$(basename "$f")  GAGAL" >> "$linkfile"
+        fi
+    done
+    echo
+    ok "Link GoFile (buka di browser HP untuk download):"
+    cat "$linkfile"
+    echo "Link juga tersimpan di $linkfile"
 }
 
 # ------------------------------------------------------------------ main
@@ -203,10 +263,11 @@ case "$CMD" in
     all)   check_tools; do_sync; do_build ;;
     sync)  check_tools; do_sync ;;
     build) check_tools; do_build ;;
+    upload) do_upload ;;
     clean)
         info "Menghapus $SRC/out dan $OUT_DIR"
         rm -rf "${SRC:?}/out" "$OUT_DIR"
         ok "Bersih. Ruang disk kosong: $(df -h --output=avail "$HOME" | tail -n 1)"
         ;;
-    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | clean | status | bersih)"; exit 1 ;;
+    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih)"; exit 1 ;;
 esac
