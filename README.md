@@ -37,6 +37,8 @@ Script otomatis: `repo init` AOSPA calcite → pasang local manifest → `repo s
 | `bash ~/build-aospa.sh bersih` | hapus source/hasil ROM lama (LineageOS, ccache) |
 | `bash ~/build-aospa.sh clean` | hapus `out/` |
 
+Varian default **user** (rilis). Untuk build debug: `VARIANT=userdebug bash ~/build-aospa.sh`.
+
 Hasil (zip ROM + boot/dtbo/vendor_boot/recovery) disalin ke `~/hasil-aospa` lalu otomatis
 di-upload ke GoFile; link download muncul di layar dan tersimpan di `~/hasil-aospa/link-gofile.txt`
 (matikan dengan `GOFILE=0`, pakai akun sendiri dengan `GOFILE_TOKEN=<token>`).
@@ -53,7 +55,7 @@ mkdir -p .repo/local_manifests
 curl -fsSL -o .repo/local_manifests/ingres.xml \
   https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/local_manifests/ingres.xml
 repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
-./rom-build.sh ingres -t userdebug
+./rom-build.sh ingres -t user
 ```
 
 Saat `lunch`, pesan `Error: No beans found for the device (ingres)` dari barista itu

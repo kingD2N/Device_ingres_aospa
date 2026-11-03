@@ -15,14 +15,14 @@
 # Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
 #   SRC=~/aospa        folder source
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
-#   VARIANT=userdebug  userdebug / user / eng
+#   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
 set -uo pipefail
 
 SRC="${SRC:-$HOME/aospa}"
-VARIANT="${VARIANT:-userdebug}"
+VARIANT="${VARIANT:-user}"
 SESSION="aospa"
 LOG="$HOME/build-aospa.log"
 OUT_DIR="$HOME/hasil-aospa"
@@ -129,6 +129,22 @@ check_disk() {
     fi
 }
 
+# ------------------------------------------------- tambalan source
+# vendor/xiaomi/sm8450-common (ThankYouMario calcite) meng-import namespace
+# hardware/qcom/display* yang tidak ada di display HAL AOSPA calcite-8450
+# (modulnya ada di root namespace) -> soong gagal. Buang import itu.
+VCOMMON_BP="vendor/xiaomi/sm8450-common/Android.bp"
+unpatch_source() {
+    [ -d vendor/xiaomi/sm8450-common/.git ] || [ -f vendor/xiaomi/sm8450-common/.git ] || return 0
+    git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
+}
+patch_source() {
+    if [ -f "$VCOMMON_BP" ] && grep -q '"hardware/qcom/display' "$VCOMMON_BP"; then
+        sed -i '/^ *"hardware\/qcom\/display/d' "$VCOMMON_BP"
+        info "Tambalan: import hardware/qcom/display dibuang dari $VCOMMON_BP"
+    fi
+}
+
 # ------------------------------------------------------------------ sync
 do_sync() {
     mkdir -p "$SRC" && cd "$SRC" || exit 1
@@ -154,6 +170,7 @@ do_sync() {
         rm -rf "${SRC:?}/$rel" "${SRC:?}/.repo/projects/$rel.git"
     }
 
+    unpatch_source
     local n slog="$HOME/sync-aospa.log"
     for n in 1 2 3; do
         info "repo sync (percobaan $n/3)"
@@ -177,6 +194,7 @@ do_sync() {
         info "Mengulang sync repo ingres yang belum lengkap"
         repo sync -c -j1 --force-sync device/xiaomi/ingres device/xiaomi/ingres-kernel vendor/xiaomi/ingres || true
     fi
+    patch_source
     ok "Source siap di $SRC"
 }
 
@@ -192,6 +210,8 @@ do_build() {
     [ "$jobs" -lt 2 ] && jobs=2
     info "Build dengan $jobs job (RAM ${ram_gb} GB, CPU $(nproc) core)"
 
+    patch_source
+    info "Varian build: $VARIANT"
     set +u   # rom-build.sh / envsetup.sh memakai variabel yang belum diisi
     local start rc
     start=$(date +%s)
