@@ -153,14 +153,46 @@ move_leftovers() {
 }
 
 unpatch_source() {
-    [ -d vendor/xiaomi/sm8450-common/.git ] || [ -f vendor/xiaomi/sm8450-common/.git ] || return 0
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
+    git -C vendor/qcom/common checkout -q -- . 2>/dev/null || true
+}
+
+# Prebuilt "X_xiaomi" (stem X, overrides X) dan prebuilt "X" dari vendor/qcom/common
+# sama-sama menyalin symbols/vendor/.../X -> ninja "multiple rules generate".
+# Tandai modul qcom yang sudah di-override sebagai installable: false.
+fix_overridden_prebuilts() {
+    python3 - <<'PYEOF'
+import glob, re
+over = set()
+for bp in ["vendor/xiaomi/sm8450-common/Android.bp", "vendor/xiaomi/ingres/Android.bp"]:
+    try:
+        txt = open(bp).read()
+    except OSError:
+        continue
+    for blk in re.split(r"\n(?=\w+ \{)", txt):
+        m = re.search(r'overrides: \[\s*"([^"]+)"', blk)
+        if m and "stem:" in blk:
+            over.add(m.group(1))
+for bp in glob.glob("vendor/qcom/common/**/Android.bp", recursive=True):
+    txt = open(bp).read()
+    blocks = re.split(r"\n(?=\w+ \{)", txt)
+    changed = False
+    for i, blk in enumerate(blocks):
+        m = re.search(r'\n    name: "([^"]+)",', blk)
+        if m and m.group(1) in over and "installable: false" not in blk:
+            blocks[i] = blk.replace(m.group(0), m.group(0) + "\n    installable: false,", 1)
+            changed = True
+            print("[..] Tambalan: %s di %s -> installable: false" % (m.group(1), bp))
+    if changed:
+        open(bp, "w").write("\n".join(blocks))
+PYEOF
 }
 patch_source() {
     # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
     if [ ! -d vendor/qcom/opensource/healthd-ext ] && [ -L vendor/qcom/defs/product-defs/vendor/health_product.mk ]; then
         rm -f vendor/qcom/defs/product-defs/vendor/health_product.mk
     fi
+    fix_overridden_prebuilts
     if [ -f "$VCOMMON_BP" ] && grep -q '"hardware/qcom/display' "$VCOMMON_BP"; then
         sed -i '/^ *"hardware\/qcom\/display/d' "$VCOMMON_BP"
         info "Tambalan: import hardware/qcom/display dibuang dari $VCOMMON_BP"
