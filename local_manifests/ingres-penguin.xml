@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    PenguinOS celerity (turunan AOSPA calcite, Android 17) untuk POCO F4 GT / Redmi K50 Gaming (ingres).
+    Taruh di .repo/local_manifests/ingres.xml (dipasang otomatis oleh build-aospa.sh dengan ROM=penguin) - langkah lengkap ada di README.md.
+-->
+<manifest>
+  <remote name="d2n" fetch="https://github.com/kingD2N" />
+
+  <!-- health HAL QTI tidak dipakai (diganti android.hardware.health-service.xiaomi);
+       override-nya membuat soong fsgen gagal: "health-service.qti ... missing variant" -->
+  <remove-project name="platform/vendor/qcom-opensource/healthd-ext" />
+
+  <!-- taro platform (sama seperti vendor/aospa/products/platforms/taro.xml PenguinOS) -->
+  <project path="hardware/qcom/display" name="AOSPA/android_hardware_qcom_display" remote="aospa" revision="calcite-8450" />
+  <project path="hardware/qcom/media" name="AOSPA/android_hardware_qcom_media" remote="aospa" revision="calcite-8450" />
+  <project path="hardware/qcom/gps" name="AOSPA/android_hardware_qcom_gps" remote="aospa" revision="calcite-8450" />
+  <project path="vendor/qcom/opensource/agm" name="AOSPA/android_vendor_qcom_opensource_agm" remote="aospa" revision="calcite-8450" />
+  <project path="vendor/qcom/opensource/audio-hal/primary-hal" name="AOSPA/android_hardware_qcom_audio" remote="aospa" revision="calcite-8450" />
+  <project path="vendor/qcom/opensource/pal" name="AOSPA/android_vendor_qcom_opensource_arpal-lx" remote="aospa" revision="calcite-8450" />
+
+  <!-- Device // ingres + kernel prebuilt -->
+  <project path="device/xiaomi/ingres" name="Device_ingres_aospa" remote="d2n" revision="main" />
+  <project path="device/xiaomi/ingres-kernel" name="android_device_xiaomi_ingres-kernel" remote="d2n" revision="calcite" clone-depth="1" />
+  <!-- Device // common -->
+  <project path="device/xiaomi/sm8450-common" name="android_device_xiaomi_sm8450-common" remote="d2n" revision="calcite" />
+  <project path="hardware/xiaomi" name="AOSPA/android_hardware_xiaomi" remote="aospa" revision="calcite" />
+
+  <!-- Vendor // ingres (format AOSPA) -->
+  <project path="vendor/xiaomi/ingres" name="proprietary_vendor_xiaomi_ingres" remote="d2n" revision="calcite" clone-depth="1" />
+  <!-- Vendor // common (blob AOSPA resmi) -->
+  <project path="vendor/xiaomi/sm8450-common" name="proprietary_vendor_xiaomi_sm8450-common" remote="blobs" revision="calcite" clone-depth="1" />
+</manifest>

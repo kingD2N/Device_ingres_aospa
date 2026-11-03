@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
-# Build Paranoid Android (AOSPA calcite / Android 17) untuk POCO F4 GT (ingres) - satu perintah.
+# Build ROM Android 17 untuk POCO F4 GT (ingres) - satu perintah.
+#   ROM=aospa   (default) Paranoid Android calcite
+#   ROM=penguin           PenguinOS celerity (turunan AOSPA calcite)
+# Kedua ROM memakai satu folder source yang sama (~/aospa), sesuai aturan
+# server "1 source ROM per akun"; pindah ROM cukup sync ulang.
 #
 #   bash build-aospa.sh            # sync + build (otomatis jalan di byobu)
 #   bash build-aospa.sh sync       # hanya sync source
@@ -13,7 +17,8 @@
 #   bash build-aospa.sh reset-ingres   # hapus repo ingres/xiaomi lama di source lalu sync ulang
 #
 # Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
-#   SRC=~/aospa        folder source
+#   ROM=penguin        pilih ROM: aospa (default) / penguin
+#   SRC=~/aospa        folder source (dipakai bersama semua ROM)
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
@@ -21,12 +26,24 @@
 
 set -uo pipefail
 
+ROM="${ROM:-aospa}"
 SRC="${SRC:-$HOME/aospa}"
 VARIANT="${VARIANT:-user}"
 SESSION="aospa"
 LOG="$HOME/build-aospa.log"
-OUT_DIR="$HOME/hasil-aospa"
-MANIFEST_URL="https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/local_manifests/ingres.xml"
+RAW="https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main"
+case "$ROM" in
+    aospa)
+        ROM_NAME="AOSPA calcite"
+        ROM_MANIFEST="https://github.com/AOSPA/manifest"; ROM_BRANCH="calcite"
+        MANIFEST_URL="$RAW/local_manifests/ingres.xml" ;;
+    penguin|pinguin|penguinos)
+        ROM=penguin; ROM_NAME="PenguinOS celerity"
+        ROM_MANIFEST="https://github.com/Project-PenguinOS/manifest"; ROM_BRANCH="celerity"
+        MANIFEST_URL="$RAW/local_manifests/ingres-penguin.xml" ;;
+    *) echo "ROM tidak dikenal: $ROM (pakai aospa / penguin)" >&2; exit 1 ;;
+esac
+OUT_DIR="$HOME/hasil-$ROM"
 SCRIPT="$(readlink -f "$0")"
 CMD="${1:-all}"
 
@@ -92,7 +109,8 @@ if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" 
         err "Sesi '$SESSION' sudah ada (satu build per akun). Masuk dengan: byobu attach -t $SESSION"
         exit 1
     fi
-    byobu new-session -d -s "$SESSION" "bash '$SCRIPT' $CMD; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read"
+    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}'"
+    byobu new-session -d -s "$SESSION" "$envs bash '$SCRIPT' $CMD; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read"
     ok "Build berjalan di sesi byobu '$SESSION' (aman kalau Termius ditutup)."
     echo "   Lihat layar build : byobu attach -t $SESSION   (keluar lagi: F6)"
     echo "   Cek progres saja  : bash $SCRIPT status"
@@ -202,10 +220,17 @@ patch_source() {
 # ------------------------------------------------------------------ sync
 do_sync() {
     mkdir -p "$SRC" && cd "$SRC" || exit 1
+    local cur_url cur_branch
+    cur_url=$(git -C .repo/manifests config remote.origin.url 2>/dev/null || true)
+    cur_branch=$(git -C .repo/manifests config branch.default.merge 2>/dev/null | sed 's#refs/heads/##' || true)
     if [ ! -d .repo ]; then
         check_disk 300
-        info "repo init AOSPA calcite"
-        repo init -u https://github.com/AOSPA/manifest -b calcite \
+        info "repo init $ROM_NAME"
+        repo init -u "$ROM_MANIFEST" -b "$ROM_BRANCH" \
+            --git-lfs --no-clone-bundle --depth=1 || { err "repo init gagal"; exit 1; }
+    elif [ "${cur_url%.git}" != "$ROM_MANIFEST" ] || { [ -n "$cur_branch" ] && [ "$cur_branch" != "$ROM_BRANCH" ]; }; then
+        info "Pindah manifest ke $ROM_NAME (source yang sama dipakai ulang)"
+        repo init -u "$ROM_MANIFEST" -b "$ROM_BRANCH" \
             --git-lfs --no-clone-bundle --depth=1 || { err "repo init gagal"; exit 1; }
     fi
     mkdir -p .repo/local_manifests
@@ -228,7 +253,7 @@ do_sync() {
     local n slog="$HOME/sync-aospa.log"
     for n in 1 2 3; do
         info "repo sync (percobaan $n/3)"
-        repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune 2>&1 | tee "$slog"
+        repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --force-remove-dirty 2>&1 | tee "$slog"
         [ "${PIPESTATUS[0]}" -eq 0 ] && break
         if grep -q 'unsupported checkout state\|not a git repository\|already exists and is not' "$slog"; then
             grep -o '/[^ :]*\.git: unsupported checkout state' "$slog" | sed 's/: unsupported checkout state//' \
@@ -271,7 +296,14 @@ do_build() {
     set +u   # rom-build.sh / envsetup.sh memakai variabel yang belum diisi
     local start rc
     start=$(date +%s)
-    ./rom-build.sh ingres -t "$VARIANT" -j "$jobs" 2>&1 | tee "$LOG"
+    local extra=""
+    if [ -f .rom-ingres ] && [ "$(cat .rom-ingres)" != "$ROM" ]; then
+        info "ROM berganti ($(cat .rom-ingres) -> $ROM): installclean dulu"
+        extra="-i"
+    fi
+    echo "$ROM" > .rom-ingres
+    info "ROM: $ROM_NAME"
+    ./rom-build.sh ingres -t "$VARIANT" -j "$jobs" $extra 2>&1 | tee "$LOG"
     rc=${PIPESTATUS[0]}
     echo "Durasi: $(( ($(date +%s) - start) / 60 )) menit"
 
@@ -285,7 +317,7 @@ do_build() {
     fi
 
     local p="out/target/product/ingres" zip
-    zip=$(ls -t $p/aospa-*.zip 2>/dev/null | grep -v target_files | head -n 1)
+    zip=$(ls -t "$p"/*.zip 2>/dev/null | grep -v -e target_files -e '/aospa_ingres-ota' | head -n 1)
     [ -n "$zip" ] || { err "Build selesai tapi zip tidak ditemukan"; exit 1; }
     mkdir -p "$OUT_DIR"
     cp "$zip" $p/boot.img $p/dtbo.img $p/vendor_boot.img $p/recovery.img "$OUT_DIR"/ 2>/dev/null
@@ -295,7 +327,7 @@ do_build() {
     if [ "${GOFILE:-1}" != 0 ]; then
         do_upload || echo "Upload GoFile gagal. Ulangi dengan: bash $SCRIPT upload"
     else
-        echo "Ambil file di folder ~/hasil-aospa lewat SFTP Termius."
+        echo "Ambil file di folder $OUT_DIR lewat SFTP Termius."
     fi
 }
 
@@ -321,7 +353,7 @@ except Exception: pass"
 
 do_upload() {
     local files=() f resp link folder token="${GOFILE_TOKEN:-}" linkfile="$OUT_DIR/link-gofile.txt"
-    for f in "$OUT_DIR"/aospa-*.zip "$OUT_DIR"/*.sha256 "$OUT_DIR"/*.img; do
+    for f in "$OUT_DIR"/*.zip "$OUT_DIR"/*.sha256 "$OUT_DIR"/*.img; do
         [ -f "$f" ] && files+=("$f")
     done
     [ ${#files[@]} -gt 0 ] || { err "Tidak ada file di $OUT_DIR untuk diupload"; return 1; }

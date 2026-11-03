@@ -15,6 +15,20 @@ Device tree **Paranoid Android (AOSPA) calcite / Android 17** untuk
 Semua repo di atas sudah tercantum di `local_manifests/ingres.xml`
 (termasuk repo platform taro: display, gps, agm, audio-hal, pal).
 
+## PenguinOS
+
+[PenguinOS](https://github.com/Project-PenguinOS/manifest) (branch `celerity`) adalah turunan
+AOSPA calcite, jadi memakai device tree, kernel, dan vendor yang sama. Cukup tambahkan `ROM=penguin`:
+
+```bash
+ROM=penguin bash ~/build-aospa.sh
+```
+
+Source memakai folder yang sama (`~/aospa`, aturan server: 1 source ROM per akun);
+script mengganti manifest lalu sync ulang hanya bagian yang berbeda. Local manifest:
+`local_manifests/ingres-penguin.xml`. Hasil di `~/hasil-penguin` (+ link GoFile).
+PenguinOS default membawa GApps (build `-gms`).
+
 ## Build (satu perintah)
 
 Di server (Termius), cukup:
