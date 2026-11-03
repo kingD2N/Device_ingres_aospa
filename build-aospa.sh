@@ -10,6 +10,7 @@
 #   bash build-aospa.sh bersih     # hapus source/hasil ROM lama (LineageOS dll) agar disk lega
 #   bash build-aospa.sh bersih ~/folderlain   # sekalian hapus folder lain yang disebut
 #   bash build-aospa.sh upload     # upload ulang isi ~/hasil-aospa ke GoFile
+#   bash build-aospa.sh reset-ingres   # hapus repo ingres/xiaomi lama di source lalu sync ulang
 #
 # Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
 #   SRC=~/aospa        folder source
@@ -85,7 +86,7 @@ if [ "$CMD" = "bersih" ]; then
 fi
 
 # ------------------------------------------- selalu jalan di dalam byobu
-if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ]; then
+if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" != "reset-ingres" ]; then
     command -v byobu >/dev/null || { err "byobu tidak ada di server"; exit 1; }
     if byobu ls 2>/dev/null | grep -q "^$SESSION"; then
         err "Sesi '$SESSION' sudah ada (satu build per akun). Masuk dengan: byobu attach -t $SESSION"
@@ -144,15 +145,32 @@ do_sync() {
     done
     curl -fsSL -o .repo/local_manifests/ingres.xml "$MANIFEST_URL" || { err "Gagal unduh local manifest"; exit 1; }
 
-    local n
+    # sisa percobaan lama: folder ingres/xiaomi yang bukan hasil repo ini bikin
+    # "unsupported checkout state" dan Android.bp lama (vendor common salah versi)
+    reset_project() {
+        local rel="${1#"$SRC"/}"; rel="${rel%/.git}"; rel="${rel%/}"
+        case "$rel" in ""|/*|*..*) return ;; esac
+        info "Menghapus checkout lama: $rel"
+        rm -rf "${SRC:?}/$rel" "${SRC:?}/.repo/projects/$rel.git"
+    }
+
+    local n slog="$HOME/sync-aospa.log"
     for n in 1 2 3; do
         info "repo sync (percobaan $n/3)"
-        if repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune; then
-            break
+        repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune 2>&1 | tee "$slog"
+        [ "${PIPESTATUS[0]}" -eq 0 ] && break
+        if grep -q 'unsupported checkout state\|not a git repository\|already exists and is not' "$slog"; then
+            grep -o '/[^ :]*\.git: unsupported checkout state' "$slog" | sed 's/: unsupported checkout state//' \
+                | sort -u | while read -r d; do reset_project "$d"; done
+            continue
         fi
         [ "$n" -eq 3 ] && { err "repo sync gagal 3 kali. Coba lagi nanti: bash $SCRIPT sync"; exit 1; }
         sleep 30
     done
+    if grep -q 'unsupported checkout state' "$slog" 2>/dev/null; then
+        err "Masih ada checkout rusak. Jalankan: bash $SCRIPT reset-ingres  lalu  bash $SCRIPT"
+        exit 1
+    fi
 
     # pastikan bagian penting ingres benar-benar lengkap
     if ! [ -f vendor/xiaomi/ingres/ingres-vendor.mk ] || ! [ -f device/xiaomi/ingres-kernel/Image ]; then
@@ -264,10 +282,19 @@ case "$CMD" in
     sync)  check_tools; do_sync ;;
     build) check_tools; do_build ;;
     upload) do_upload ;;
+    reset-ingres)
+        cd "$SRC" 2>/dev/null || { err "Folder $SRC tidak ada"; exit 1; }
+        for d in device/xiaomi/ingres device/xiaomi/ingres-kernel device/xiaomi/sm8450-common \
+                 hardware/xiaomi vendor/xiaomi/ingres vendor/xiaomi/sm8450-common; do
+            info "Menghapus $d"
+            rm -rf "${SRC:?}/$d" "${SRC:?}/.repo/projects/$d.git"
+        done
+        ok "Selesai. Lanjutkan dengan: bash $SCRIPT"
+        ;;
     clean)
         info "Menghapus $SRC/out dan $OUT_DIR"
         rm -rf "${SRC:?}/out" "$OUT_DIR"
         ok "Bersih. Ruang disk kosong: $(df -h --output=avail "$HOME" | tail -n 1)"
         ;;
-    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih)"; exit 1 ;;
+    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih | reset-ingres)"; exit 1 ;;
 esac
