@@ -39,10 +39,6 @@ Script otomatis: `repo init` AOSPA calcite → pasang local manifest → `repo s
 
 Varian default **user** (rilis). Untuk build debug: `VARIANT=userdebug bash ~/build-aospa.sh`.
 
-Hasil (zip ROM + boot/dtbo/vendor_boot/recovery) disalin ke `~/hasil-aospa` lalu otomatis
-di-upload ke GoFile; link download muncul di layar dan tersimpan di `~/hasil-aospa/link-gofile.txt`
-(matikan dengan `GOFILE=0`, pakai akun sendiri dengan `GOFILE_TOKEN=<token>`).
-
 > Source AOSPA butuh ±300 GB. Kalau kuota server tidak cukup untuk LineageOS dan AOSPA
 > sekaligus, hapus dulu hasil build LineageOS (`bash ~/build-ingres.sh clean`) atau folder `~/los24`.
 
