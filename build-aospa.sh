@@ -139,6 +139,10 @@ unpatch_source() {
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
 }
 patch_source() {
+    # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
+    if [ ! -d vendor/qcom/opensource/healthd-ext ] && [ -L vendor/qcom/defs/product-defs/vendor/health_product.mk ]; then
+        rm -f vendor/qcom/defs/product-defs/vendor/health_product.mk
+    fi
     if [ -f "$VCOMMON_BP" ] && grep -q '"hardware/qcom/display' "$VCOMMON_BP"; then
         sed -i '/^ *"hardware\/qcom\/display/d' "$VCOMMON_BP"
         info "Tambalan: import hardware/qcom/display dibuang dari $VCOMMON_BP"
