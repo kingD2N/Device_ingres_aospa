@@ -43,6 +43,10 @@ PRODUCT_PACKAGES += \
     IngresSystemUIOverlay \
     IngresWifiOverlay
 
+# SELinux Treble Labeling (Android 17): label app GameKeys/MIUI Camera/Dolby dari
+# paket tambahan ada di sepolicy vendor; laporkan sebagai peringatan saja
+PRODUCT_ENFORCE_SELINUX_TREBLE_LABELING := false
+
 # Shipping API
 PRODUCT_SHIPPING_API_LEVEL := 31
 
