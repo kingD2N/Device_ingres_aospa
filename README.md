@@ -81,3 +81,10 @@ normal (ingres bukan device resmi AOSPA, repo-nya diambil dari local manifest) d
   Xiaomi (AGM/PAL/audio HAL, displayfeature, SDM) seperti device AOSPA lain di sm8450.
 - Ekstrak ulang blob: `./extract-files.py --only-target <ota-full.zip>`
   (atau workflow "Ingres Vendor Blobs (AOSPA calcite)" di kingD2N/firmware_Update).
+
+## Paket tambahan
+
+Setiap build otomatis membawa: **GameKeys**, **LED** (app Leds + lampu status notifikasi/baterai),
+**Dolby Lunaris**, **JamesDSP**, dan **MIUI Camera**. Sumbernya ada di local manifest
+(`vendor/ingres/addons` = [kingD2N/LED_ingres_for_Notifikasi_system](https://github.com/kingD2N/LED_ingres_for_Notifikasi_system/tree/addons) branch `addons`).
+Matikan satu paket di `device.mk` sebelum baris addons, misal `INGRES_ADDONS_MIUICAMERA := false`.
