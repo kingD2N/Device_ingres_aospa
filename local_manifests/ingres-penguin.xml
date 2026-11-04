@@ -34,6 +34,8 @@
   <remote name="gh" fetch="https://github.com" />
   <project path="vendor/ingres/addons" name="kingD2N/LED_ingres_for_Notifikasi_system" remote="gh" revision="addons" />
   <project path="vendor/xiaomi/gamekey" name="Ingres-Centre/android_vendor_xiaomi_gamekey" remote="gh" revision="master" />
+  <!-- submodule GameKeys (repo tidak mengambil git submodule) -->
+  <project path="vendor/xiaomi/gamekey/third_party/cpp/evdev" name="LineageOS/android_external_libevdev" remote="gh" revision="lineage-22.2" />
   <project path="packages/apps/DolbyUI" name="Gurinbone/packages_apps_DolbyUI" remote="gh" revision="main" />
   <project path="vendor/JamesDSP" name="MillenniumOSS/android_vendor_JamesDSP" remote="gh" revision="sixteen" clone-depth="1" />
   <project path="vendor/xiaomi/miuicamera-ingres" name="Gurinbone/android_vendor_xiaomi_miuicamera-ingres" remote="gh" revision="lineage-23.2" clone-depth="1" />

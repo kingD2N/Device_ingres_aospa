@@ -173,6 +173,7 @@ move_leftovers() {
 unpatch_source() {
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
     git -C vendor/qcom/common checkout -q -- . 2>/dev/null || true
+    git -C vendor/xiaomi/gamekey checkout -q -- third_party/rust 2>/dev/null || true
 }
 
 # Prebuilt "X_xiaomi" (stem X, overrides X) dan prebuilt "X" dari vendor/qcom/common
@@ -205,12 +206,29 @@ for bp in glob.glob("vendor/qcom/common/**/Android.bp", recursive=True):
         open(bp, "w").write("\n".join(blocks))
 PYEOF
 }
+# GameKeys: libevdev (C) ada di submodule third_party/cpp/evdev (diambil lewat
+# local manifest). Crate rust-nya cuma dipakai gamekeyd (vendor), jadi dibuat
+# vendor-only agar tidak butuh varian core dari libevdev.
+fix_gamekey() {
+    local g=vendor/xiaomi/gamekey
+    [ -d "$g" ] || return 0
+    if [ ! -f "$g/third_party/cpp/evdev/Android.bp" ]; then
+        info "Mengambil libevdev untuk GameKeys"
+        repo sync -c -j1 --force-sync "$g/third_party/cpp/evdev" || true
+    fi
+    [ -f "$g/third_party/cpp/evdev/Android.bp" ] || { err "libevdev GameKeys tidak ada ($g/third_party/cpp/evdev)"; exit 1; }
+    if grep -qs 'vendor_available *: *true' "$g"/third_party/rust/*/Android.bp; then
+        sed -i 's/vendor_available *: *true/vendor: true/' "$g"/third_party/rust/*/Android.bp
+        info "Tambalan: crate rust GameKeys -> vendor: true"
+    fi
+}
 patch_source() {
     # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
     if [ ! -d vendor/qcom/opensource/healthd-ext ] && [ -L vendor/qcom/defs/product-defs/vendor/health_product.mk ]; then
         rm -f vendor/qcom/defs/product-defs/vendor/health_product.mk
     fi
     fix_overridden_prebuilts
+    fix_gamekey
     if [ -f "$VCOMMON_BP" ] && grep -q '"hardware/qcom/display' "$VCOMMON_BP"; then
         sed -i '/^ *"hardware\/qcom\/display/d' "$VCOMMON_BP"
         info "Tambalan: import hardware/qcom/display dibuang dari $VCOMMON_BP"
