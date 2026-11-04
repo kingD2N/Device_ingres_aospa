@@ -329,6 +329,11 @@ do_build() {
         err "Build gagal. Ini penyebabnya (kirim screenshot bagian ini):"
         echo "------------------------------------------------------------"
         grep -n 'FAILED: \|error:\|ninja: build stopped' "$LOG" | grep -v 'warning:' | head -n 30 | grep . || tail -n 60 "$LOG"
+        # error Python (mis. saat membuat zip OTA) ada di Traceback-nya
+        if grep -q 'Traceback (most recent call last)' "$LOG"; then
+            echo "------------------------------------------------------------"
+            grep -n -A30 'Traceback (most recent call last)' "$LOG" | tail -n 40
+        fi
         echo "------------------------------------------------------------"
         echo "Setelah source ditambal, lanjutkan dengan: bash $SCRIPT"
         exit 1
