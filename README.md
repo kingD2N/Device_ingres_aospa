@@ -73,6 +73,8 @@ normal (ingres bukan device resmi AOSPA, repo-nya diambil dari local manifest) d
 
 ## Catatan
 
+- `/data` **tanpa enkripsi** (decrypt) secara default: wajib Format Data saat pertama flash.
+  Build terenkripsi: `DECRYPT=0 bash ~/build-aospa.sh`.
 - Firmware **tidak** ikut di zip ROM (sama seperti build LineageOS). Flash firmware
   HyperOS OS2.0.8.0.ULJCNXM secara manual sebelum flash ROM.
 - Kernel memakai prebuilt di `device/xiaomi/ingres-kernel` (GKI 5.10 + modul ingres:

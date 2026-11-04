@@ -5,6 +5,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# /data tanpa enkripsi (decrypt). Wajib format data saat pertama kali flash.
+# Build terenkripsi: DECRYPT=0 bash <script build>
+TARGET_DECRYPTED_DATA ?= true
+
 # Dolby UI: LunarisDolby (dari paket tambahan), bukan XiaomiDolby
 TARGET_USES_LUNARIS_DOLBY := true
 

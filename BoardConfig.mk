@@ -7,6 +7,9 @@
 
 DEVICE_PATH := device/xiaomi/ingres
 
+# /data tanpa enkripsi (lihat device.mk), dipakai fstab recovery
+TARGET_DECRYPTED_DATA ?= true
+
 # Inherit from sm8450-common
 include device/xiaomi/sm8450-common/BoardConfigCommon.mk
 
