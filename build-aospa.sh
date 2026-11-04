@@ -328,7 +328,7 @@ do_build() {
     if [ "$rc" -ne 0 ] || ! grep -q 'Package Complete' "$LOG"; then
         err "Build gagal. Ini penyebabnya (kirim screenshot bagian ini):"
         echo "------------------------------------------------------------"
-        grep -n -m3 -A25 'FAILED:\|error:' "$LOG" || tail -n 60 "$LOG"
+        grep -n 'FAILED: \|error:\|ninja: build stopped' "$LOG" | grep -v 'warning:' | head -n 30 | grep . || tail -n 60 "$LOG"
         echo "------------------------------------------------------------"
         echo "Setelah source ditambal, lanjutkan dengan: bash $SCRIPT"
         exit 1
