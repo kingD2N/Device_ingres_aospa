@@ -43,7 +43,7 @@ case "$ROM" in
         MANIFEST_URL="$RAW/local_manifests/ingres-penguin.xml" ;;
     *) echo "ROM tidak dikenal: $ROM (pakai aospa / penguin)" >&2; exit 1 ;;
 esac
-OUT_DIR="$HOME/hasil-$ROM"
+HASIL_DIR="$HOME/hasil-$ROM"
 SCRIPT="$(readlink -f "$0")"
 CMD="${1:-all}"
 
@@ -319,15 +319,15 @@ do_build() {
     local p="out/target/product/ingres" zip
     zip=$(ls -t "$p"/*.zip 2>/dev/null | grep -v -e target_files -e '/aospa_ingres-ota' | head -n 1)
     [ -n "$zip" ] || { err "Build selesai tapi zip tidak ditemukan"; exit 1; }
-    mkdir -p "$OUT_DIR"
-    cp "$zip" $p/boot.img $p/dtbo.img $p/vendor_boot.img $p/recovery.img "$OUT_DIR"/ 2>/dev/null
-    (cd "$OUT_DIR" && sha256sum "$(basename "$zip")" > "$(basename "$zip").sha256")
+    mkdir -p "$HASIL_DIR"
+    cp "$zip" $p/boot.img $p/dtbo.img $p/vendor_boot.img $p/recovery.img "$HASIL_DIR"/ 2>/dev/null
+    (cd "$HASIL_DIR" && sha256sum "$(basename "$zip")" > "$(basename "$zip").sha256")
     ok "BUILD BERHASIL"
-    ls -lh "$OUT_DIR"
+    ls -lh "$HASIL_DIR"
     if [ "${GOFILE:-1}" != 0 ]; then
         do_upload || echo "Upload GoFile gagal. Ulangi dengan: bash $SCRIPT upload"
     else
-        echo "Ambil file di folder $OUT_DIR lewat SFTP Termius."
+        echo "Ambil file di folder $HASIL_DIR lewat SFTP Termius."
     fi
 }
 
@@ -352,11 +352,11 @@ except Exception: pass"
 }
 
 do_upload() {
-    local files=() f resp link folder token="${GOFILE_TOKEN:-}" linkfile="$OUT_DIR/link-gofile.txt"
-    for f in "$OUT_DIR"/*.zip "$OUT_DIR"/*.sha256 "$OUT_DIR"/*.img; do
+    local files=() f resp link folder token="${GOFILE_TOKEN:-}" linkfile="$HASIL_DIR/link-gofile.txt"
+    for f in "$HASIL_DIR"/*.zip "$HASIL_DIR"/*.sha256 "$HASIL_DIR"/*.img; do
         [ -f "$f" ] && files+=("$f")
     done
-    [ ${#files[@]} -gt 0 ] || { err "Tidak ada file di $OUT_DIR untuk diupload"; return 1; }
+    [ ${#files[@]} -gt 0 ] || { err "Tidak ada file di $HASIL_DIR untuk diupload"; return 1; }
     info "Upload ${#files[@]} file ke GoFile (zip ROM paling lama, sabar)"
     folder=""; link=""
     : > "$linkfile"
@@ -400,8 +400,8 @@ case "$CMD" in
         ok "Selesai. Lanjutkan dengan: bash $SCRIPT"
         ;;
     clean)
-        info "Menghapus $SRC/out dan $OUT_DIR"
-        rm -rf "${SRC:?}/out" "$OUT_DIR"
+        info "Menghapus $SRC/out dan $HASIL_DIR"
+        rm -rf "${SRC:?}/out" "$HASIL_DIR"
         ok "Bersih. Ruang disk kosong: $(df -h --output=avail "$HOME" | tail -n 1)"
         ;;
     *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih | reset-ingres)"; exit 1 ;;
