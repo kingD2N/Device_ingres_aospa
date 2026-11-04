@@ -30,3 +30,7 @@ TARGET_SCREEN_DENSITY := 395
 # Properties
 TARGET_SYSTEM_PROP += $(DEVICE_PATH)/properties/system.prop
 TARGET_VENDOR_PROP += $(DEVICE_PATH)/properties/vendor.prop
+
+# Paket tambahan (GameKeys, LED, Dolby Lunaris, JamesDSP, MIUI Camera)
+INGRES_ADDONS_ROM := aospa
+-include vendor/ingres/addons/BoardConfigAddons.mk

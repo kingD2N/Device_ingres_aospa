@@ -5,6 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# Dolby UI: LunarisDolby (dari paket tambahan), bukan XiaomiDolby
+TARGET_USES_LUNARIS_DOLBY := true
+
 # Inherit from sm8450-common
 $(call inherit-product, device/xiaomi/sm8450-common/common.mk)
 
@@ -38,6 +41,11 @@ PRODUCT_PACKAGES += \
 
 # Shipping API
 PRODUCT_SHIPPING_API_LEVEL := 31
+
+# Paket tambahan: GameKeys, LED, Dolby Lunaris, JamesDSP, MIUI Camera
+# (vendor/ingres/addons, lihat local manifest)
+INGRES_ADDONS_ROM := aospa
+$(call inherit-product-if-exists, vendor/ingres/addons/addons.mk)
 
 # Vendor blobs
 $(call inherit-product, vendor/xiaomi/ingres/ingres-vendor.mk)
