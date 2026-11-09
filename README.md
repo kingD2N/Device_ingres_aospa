@@ -27,7 +27,7 @@ ROM=penguin bash ~/build-aospa.sh
 Source memakai folder yang sama (`~/aospa`, aturan server: 1 source ROM per akun);
 script mengganti manifest lalu sync ulang hanya bagian yang berbeda. Local manifest:
 `local_manifests/ingres-penguin.xml`. Hasil di `~/hasil-penguin` (+ link GoFile).
-PenguinOS default membawa GApps (build `-gms`).
+PenguinOS default membawa GApps (build `-gms`); vanilla: `GAPPS=0 ROM=penguin bash ~/build-aospa.sh`.
 
 ## Build (satu perintah)
 

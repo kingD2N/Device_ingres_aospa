@@ -22,6 +22,7 @@
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
+#   GAPPS=1 / GAPPS=0  paksa build dengan GApps (-gms) / vanilla (default: bawaan ROM)
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
@@ -75,7 +76,11 @@ if [ "$CMD" = "bersih" ]; then
     du -sh "$HOME"/* "$HOME"/.ccache "$HOME"/.cache 2>/dev/null | sort -rh | head -n 15
     echo
     targets=""
-    for d in "$HOME/los24" "$HOME/hasil-los24" "$HOME/build.log" "$HOME/.ccache" "$@"; do
+    for d in "$HOME/los24" "$HOME/hasil-los24" "$HOME/build.log" "$HOME/los24-sisa-lama" \
+             "$HOME/lunaris" "$HOME/hasil-lunaris" "$HOME/build-lunaris.log" "$HOME/lunaris-sisa-lama" \
+             "$HOME/axion" "$HOME/hasil-axion" "$HOME/build-axion.log" "$HOME/axion-sisa-lama" \
+             "$HOME/ascp" "$HOME/hasil-ascp" "$HOME/build-ascp.log" "$HOME/ascp-sisa-lama" \
+             "$HOME/.ccache" "$@"; do
         [ -e "$d" ] || continue
         case "$(readlink -f "$d")" in
             "$(readlink -f "$HOME")"|"$(readlink -f "$SRC")"|"$SCRIPT") echo "Lewati $d (tidak boleh dihapus)"; continue ;;
@@ -88,10 +93,10 @@ if [ "$CMD" = "bersih" ]; then
     fi
     echo "Yang akan DIHAPUS PERMANEN:"
     for d in $targets; do echo "   $d"; done
-    echo "Simpan dulu zip ROM lama (mis. ~/hasil-los24) lewat SFTP kalau masih perlu."
+    echo "Simpan dulu zip ROM lama (mis. ~/hasil-los24, ~/hasil-ascp) lewat SFTP kalau masih perlu."
     read -r -p "Ketik YA lalu Enter untuk menghapus: " jawab
     [ "$jawab" = "YA" ] || { info "Batal, tidak ada yang dihapus."; exit 0; }
-    for s in los24 penguin aospa; do
+    for s in los24 lunaris axion ascp penguin aospa; do
         [ "$s" = "$SESSION" ] && [ -n "${TMUX:-}" ] && continue
         byobu kill-session -t "$s" >/dev/null 2>&1 && info "Sesi byobu '$s' dihentikan"
     done
@@ -110,7 +115,7 @@ if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" 
         err "Sesi '$SESSION' sudah ada (satu build per akun). Masuk dengan: byobu attach -t $SESSION"
         exit 1
     fi
-    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}'"
+    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}' GAPPS='${GAPPS:-}'"
     byobu new-session -d -s "$SESSION" "$envs bash '$SCRIPT' $CMD; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read"
     ok "Build berjalan di sesi byobu '$SESSION' (aman kalau Termius ditutup)."
     echo "   Lihat layar build : byobu attach -t $SESSION   (keluar lagi: F6)"
@@ -288,6 +293,16 @@ patch_source() {
 
 # ------------------------------------------------------------------ sync
 do_sync() {
+    # aturan server: hanya 1 source ROM per akun
+    local other
+    for other in "$HOME"/*/.repo; do
+        [ -d "$other" ] || continue
+        other="$(dirname "$other")"
+        [ "$(readlink -f "$other")" = "$(readlink -f "$SRC")" ] && continue
+        err "Ada source ROM lain: $other (server hanya mengizinkan 1 source ROM)."
+        echo "   Simpan dulu zip-nya kalau perlu, lalu hapus: bash $SCRIPT bersih $other"
+        exit 1
+    done
     mkdir -p "$SRC" && cd "$SRC" || exit 1
     local cur_url cur_branch
     cur_url=$(git -C .repo/manifests config remote.origin.url 2>/dev/null || true)
@@ -374,6 +389,10 @@ do_build() {
         extra="-i"
     fi
     echo "$ROM" > .rom-ingres
+    case "${GAPPS:-}" in
+        1|gms) extra="$extra -g"; info "Build dengan GApps (-gms)" ;;
+        0|vanilla) extra="$extra -l"; info "Build vanilla (tanpa GApps)" ;;
+    esac
     info "ROM: $ROM_NAME"
     ./rom-build.sh ingres -t "$VARIANT" -j "$jobs" $extra 2>&1 | tee "$LOG"
     rc=${PIPESTATUS[0]}
