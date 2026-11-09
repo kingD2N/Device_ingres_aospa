@@ -193,7 +193,23 @@ move_leftovers() {
     done
 }
 
+# Dolby Vision: composer Qualcomm sengaja tidak melaporkan Dolby Vision di kemampuan
+# HDR layar. Tambahkan ke daftar (HDR10/HLG/HDR10+ tetap). SM8450 tidak punya decoder
+# Dolby Vision, jadi ini hanya kemampuan layar yang dilaporkan.
+fix_dolby_vision() {
+    local f=hardware/qcom/display/composer/hwc_display.cpp
+    [ -f "$f" ] || return 0
+    grep -q 'Hdr::DOLBY_VISION) /\* Skip list \*/' "$f" || return 0
+    sed -i \
+        -e 's|num_types = UINT32(Hdr::HDR10_PLUS) - 1;|num_types = UINT32(Hdr::HDR10_PLUS);|' \
+        -e 's|num_types = UINT32(Hdr::HLG) - 1;|num_types = UINT32(Hdr::HLG);|' \
+        -e 's|while (type == static_cast<int32_t>(Hdr::DOLBY_VISION) /\* Skip list \*/) {|while (type == 0 /* ingres: Dolby Vision ikut dilaporkan */) {|' \
+        -e 's|if (type > (num_types + 1)) {|if (type > static_cast<int32_t>(num_types)) {|' "$f"
+    info "Tambalan: composer melaporkan Dolby Vision"
+}
+
 unpatch_source() {
+    git -C hardware/qcom/display checkout -q -- composer/hwc_display.cpp 2>/dev/null || true
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
     git -C vendor/qcom/common checkout -q -- . 2>/dev/null || true
     git -C vendor/xiaomi/gamekey checkout -q -- third_party/rust daemon/src 2>/dev/null || true
@@ -257,6 +273,7 @@ fix_gamekey() {
     fi
 }
 patch_source() {
+    fix_dolby_vision
     # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
     if [ ! -d vendor/qcom/opensource/healthd-ext ] && [ -L vendor/qcom/defs/product-defs/vendor/health_product.mk ]; then
         rm -f vendor/qcom/defs/product-defs/vendor/health_product.mk
