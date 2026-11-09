@@ -22,7 +22,7 @@
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
-#   GAPPS=1 / GAPPS=0  paksa build dengan GApps (-gms) / vanilla (default: bawaan ROM)
+#   GAPPS=1 / GAPPS=0  PenguinOS: paksa GApps (-gms) / vanilla (AOSPA selalu GApps)
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
@@ -389,10 +389,15 @@ do_build() {
         extra="-i"
     fi
     echo "$ROM" > .rom-ingres
-    case "${GAPPS:-}" in
-        1|gms) extra="$extra -g"; info "Build dengan GApps (-gms)" ;;
-        0|vanilla) extra="$extra -l"; info "Build vanilla (tanpa GApps)" ;;
-    esac
+    # pilihan GApps hanya ada di PenguinOS; AOSPA calcite selalu membawa GApps
+    if [ "$ROM" = penguin ]; then
+        case "${GAPPS:-}" in
+            1|gms) extra="$extra -g"; info "Build dengan GApps (-gms)" ;;
+            0|vanilla) extra="$extra -l"; info "Build vanilla (tanpa GApps)" ;;
+        esac
+    elif [ -n "${GAPPS:-}" ]; then
+        info "GAPPS diabaikan: AOSPA calcite selalu membawa GApps"
+    fi
     info "ROM: $ROM_NAME"
     ./rom-build.sh ingres -t "$VARIANT" -j "$jobs" $extra 2>&1 | tee "$LOG"
     rc=${PIPESTATUS[0]}
