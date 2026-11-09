@@ -24,6 +24,15 @@ PRODUCT_CHARACTERISTICS := nosdcard
 # Kernel (prebuilt: device/xiaomi/ingres-kernel)
 KERNEL_PREBUILT_DIR := $(LOCAL_PATH)-kernel
 
+# Kernel prebuilt (MIX kernel) sengaja memakai CONFIG_SYSVIPC=y dan
+# CONFIG_IP6_NF_NAT=y, sedangkan matriks VINTF Android 17 terbaru (FCM 6 /
+# kernel 5.10) mewajibkan keduanya =n -> paket OTA gagal dibuat
+# ("Runtime info and framework compatibility matrix are incompatible").
+# Lewati pemeriksaan konfigurasi kernel saat membuat OTA; UFFD GC diisi
+# manual karena versi kernel tidak lagi dibaca otomatis (GKI 5.10 mendukung).
+PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
+PRODUCT_ENABLE_UFFD_GC := true
+
 # Keylayout
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/keylayout/uinput-fpc.kl:$(TARGET_COPY_OUT_VENDOR)/usr/keylayout/uinput-fpc.kl \
