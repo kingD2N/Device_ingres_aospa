@@ -341,7 +341,10 @@ do_build() {
     if [ "$rc" -ne 0 ] || ! grep -q 'Package Complete' "$LOG"; then
         err "Build gagal. Ini penyebabnya (kirim screenshot bagian ini):"
         echo "------------------------------------------------------------"
-        grep -n 'FAILED: \|error:\|^e: \|ninja: build stopped' "$LOG" | grep -v 'warning:' | head -n 30 | grep . || tail -n 60 "$LOG"
+        # baris progres "[ 23% ...]" berisi nama modul (mis. libthiserror) -> buang
+        { grep -n -A12 '^FAILED: ' "$LOG" | grep -v -E '^[0-9]+[-:]\[ *[0-9]+% ' | head -n 40
+          grep -n -E '(^|[^a-z_])(error|e): |ninja: build stopped' "$LOG" | grep -v -E 'warning:|^[0-9]+:\[ *[0-9]+% ' | tail -n 15
+        } | grep . || tail -n 60 "$LOG"
         # error Python (mis. saat membuat zip OTA) ada di Traceback-nya
         if grep -q 'Traceback (most recent call last)' "$LOG"; then
             echo "------------------------------------------------------------"
