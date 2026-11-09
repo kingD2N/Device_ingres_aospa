@@ -169,7 +169,7 @@ restore_leftovers() {
     [ -d "$bak" ] || return 0
     known=$(manifest_paths)
     for d in $(cd "$bak" && find device vendor kernel hardware -mindepth 1 -maxdepth 2 -type d 2>/dev/null); do
-        echo "$known" | grep -qx "$d" || continue
+        grep -qx "$d" <<<"$known" || continue
         [ -e "$d" ] && continue
         mkdir -p "$(dirname "$d")"
         info "Mengembalikan $d dari $bak"
@@ -183,9 +183,9 @@ move_leftovers() {
     [ -n "$known" ] || return 0
     for d in device/xiaomi/* vendor/xiaomi/* kernel/xiaomi/* hardware/xiaomi*; do
         [ -d "$d" ] || continue
-        echo "$known" | grep -qx "$d" && continue
+        grep -qx "$d" <<<"$known" && continue
         # folder induk dari repo lain (mis. vendor/xiaomi/camera/...) jangan disentuh
-        echo "$known" | grep -q "^$d/" && continue
+        grep -q "^$d/" <<<"$known" && continue
         mkdir -p "$bak/$(dirname "$d")"
         info "Memindahkan folder sisa lama: $d -> $bak/$d"
         rm -rf "${bak:?}/$d"
