@@ -77,10 +77,10 @@ normal (ingres bukan device resmi AOSPA, repo-nya diambil dari local manifest) d
   Build terenkripsi: `DECRYPT=0 bash ~/build-aospa.sh`.
 - Firmware **tidak** ikut di zip ROM (sama seperti build LineageOS). Flash firmware
   HyperOS OS2.0.8.0.ULJCNXM secara manual sebelum flash ROM.
-- Kernel: AOSPA (default `KERNEL=src`) membangun **kernel LineageOS 24 dari source** sebelum ROM
+- Kernel: AOSPA dan PenguinOS (default `KERNEL=src`) membangun **kernel LineageOS 24 dari source** sebelum ROM
   (`kernel/build-los-kernel.sh`: kernel `lineage-24.0`, `sm8450-modules`, `sm8450-devicetrees`,
   sama seperti `kernel.mk` LineageOS) lalu mengisi `device/xiaomi/ingres-kernel`.
-  `KERNEL=los24` = kernel dari zip ROM, `KERNEL=mix` = prebuilt MIX (default PenguinOS).
+  `KERNEL=los24` = kernel dari zip ROM, `KERNEL=mix` = prebuilt MIX.
 - Blob vendor (`proprietary-files.txt`) = blob ingres LineageOS 24 + stack audio/display
   Xiaomi (AGM/PAL/audio HAL, displayfeature, SDM) seperti device AOSPA lain di sm8450.
 - Ekstrak ulang blob: `./extract-files.py --only-target <ota-full.zip>`

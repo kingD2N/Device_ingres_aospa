@@ -24,9 +24,9 @@
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
 #   GAPPS=1 / GAPPS=0  PenguinOS: paksa GApps (-gms) / vanilla (AOSPA selalu GApps)
-#   KERNEL=src         AOSPA (default): kernel LineageOS 24 di-build dari source tiap build
+#   KERNEL=src         (default AOSPA & PenguinOS): kernel LineageOS 24 di-build dari source tiap build
 #   KERNEL=los24       kernel LineageOS 24 dari zip ROM (~/ingres-kernel-los24)
-#   KERNEL=mix         kernel prebuilt bawaan device/xiaomi/ingres-kernel (MIX, default PenguinOS)
+#   KERNEL=mix         kernel prebuilt bawaan device/xiaomi/ingres-kernel (MIX)
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
@@ -53,8 +53,8 @@ HASIL_DIR="$HOME/hasil-$ROM"
 # Kernel: AOSPA memakai kernel LineageOS 24 (sama dengan ROM AOSP kita), PenguinOS tetap MIX
 # src   = build kernel LineageOS 24 dari source tiap build (default AOSPA)
 # los24 = kernel LineageOS 24 dari zip ROM (bash build-aospa.sh kernel-los24 <zip>)
-# mix   = prebuilt MIX bawaan device/xiaomi/ingres-kernel (default PenguinOS)
-if [ "$ROM" = aospa ]; then KERNEL="${KERNEL:-src}"; else KERNEL="${KERNEL:-mix}"; fi
+# mix   = prebuilt MIX bawaan device/xiaomi/ingres-kernel
+KERNEL="${KERNEL:-src}"
 KERNEL_DIR="$HOME/ingres-kernel-los24"
 KRAW="https://raw.githubusercontent.com/kingD2N/android_device_xiaomi_ingres-kernel/calcite"
 SCRIPT="$(readlink -f "$0")"
