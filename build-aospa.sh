@@ -24,7 +24,8 @@
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
 #   GAPPS=1 / GAPPS=0  PenguinOS: paksa GApps (-gms) / vanilla (AOSPA selalu GApps)
-#   KERNEL=los24       AOSPA (default): kernel LineageOS 24 dari ~/ingres-kernel-los24
+#   KERNEL=src         AOSPA (default): kernel LineageOS 24 di-build dari source tiap build
+#   KERNEL=los24       kernel LineageOS 24 dari zip ROM (~/ingres-kernel-los24)
 #   KERNEL=mix         kernel prebuilt bawaan device/xiaomi/ingres-kernel (MIX, default PenguinOS)
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
@@ -50,7 +51,10 @@ case "$ROM" in
 esac
 HASIL_DIR="$HOME/hasil-$ROM"
 # Kernel: AOSPA memakai kernel LineageOS 24 (sama dengan ROM AOSP kita), PenguinOS tetap MIX
-if [ "$ROM" = aospa ]; then KERNEL="${KERNEL:-los24}"; else KERNEL="${KERNEL:-mix}"; fi
+# src   = build kernel LineageOS 24 dari source tiap build (default AOSPA)
+# los24 = kernel LineageOS 24 dari zip ROM (bash build-aospa.sh kernel-los24 <zip>)
+# mix   = prebuilt MIX bawaan device/xiaomi/ingres-kernel (default PenguinOS)
+if [ "$ROM" = aospa ]; then KERNEL="${KERNEL:-src}"; else KERNEL="${KERNEL:-mix}"; fi
 KERNEL_DIR="$HOME/ingres-kernel-los24"
 KRAW="https://raw.githubusercontent.com/kingD2N/android_device_xiaomi_ingres-kernel/calcite"
 SCRIPT="$(readlink -f "$0")"
@@ -344,6 +348,10 @@ do_kernel_los24() {
 # Pasang kernel pilihan ke device/xiaomi/ingres-kernel (KERNEL_PREBUILT_DIR) setelah sync
 apply_kernel() {
     local d=device/xiaomi/ingres-kernel
+    if [ "$KERNEL" = src ]; then
+        info "Kernel: LineageOS 24 dari source (di-build sebelum ROM)"
+        return
+    fi
     if [ "$KERNEL" != los24 ]; then
         info "Kernel: prebuilt bawaan $d ($(strings $d/Image 2>/dev/null | grep -m1 '^Linux version 5' | cut -d' ' -f3))"
         return
@@ -481,6 +489,18 @@ do_build() {
         info "GAPPS diabaikan: AOSPA calcite selalu membawa GApps"
     fi
     info "ROM: $ROM_NAME"
+    if [ "$KERNEL" = src ]; then
+        if [ ! -d kernel/xiaomi/sm8450 ]; then
+            err "Source kernel tidak ada (kernel/xiaomi/sm8450). Jalankan: bash $SCRIPT sync"
+            exit 1
+        fi
+        info "Build kernel LineageOS 24 dari source"
+        if ! JOBS="$jobs" bash device/xiaomi/ingres/kernel/build-los-kernel.sh 2>&1 | tee "$HOME/build-kernel-aospa.log"; then
+            err "Build kernel gagal. Kirim screenshot ini atau file ~/build-kernel-aospa.log"
+            grep -n -E '(^|[^a-z_])(error|Error)[: ]|\*\*\*|\[kernel-los\]' "$HOME/build-kernel-aospa.log" | tail -n 25
+            exit 1
+        fi
+    fi
     ./rom-build.sh ingres -t "$VARIANT" -j "$jobs" $extra 2>&1 | tee "$LOG"
     rc=${PIPESTATUS[0]}
     echo "Durasi: $(( ($(date +%s) - start) / 60 )) menit"

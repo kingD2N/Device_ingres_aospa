@@ -24,6 +24,10 @@ PRODUCT_CHARACTERISTICS := nosdcard
 # Kernel (prebuilt: device/xiaomi/ingres-kernel)
 KERNEL_PREBUILT_DIR := $(LOCAL_PATH)-kernel
 
+# Source kernel LineageOS 24 (kernel/xiaomi/*) hanya dipakai build-los-kernel.sh
+# untuk mengisi KERNEL_PREBUILT_DIR; Android.mk/bp di dalamnya jangan ikut dibaca.
+PRODUCT_SOURCE_ROOT_DIRS += -kernel/xiaomi
+
 # Kernel prebuilt (MIX kernel) sengaja memakai CONFIG_SYSVIPC=y dan
 # CONFIG_IP6_NF_NAT=y, sedangkan matriks VINTF Android 17 terbaru (FCM 6 /
 # kernel 5.10) mewajibkan keduanya =n -> paket OTA gagal dibuat
