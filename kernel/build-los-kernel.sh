@@ -120,11 +120,12 @@ build_host_tools() {
     echo '#define DTC_VERSION "DTC 1.7.x-lineage"' > "$src/version_gen.h"
     lib="$(ls "$src"/libfdt/*.c)"
     cf=(-O2 -DNO_YAML -Wno-macro-redefined -Wno-unused-parameter -I"$src" -I"$src/libfdt")
-    ( cd "$src" && bison -d -o dtc-parser.tab.c dtc-parser.y && flex -o dtc-lexer.lex.c dtc-lexer.l ) \
+    # nama keluaran mengikuti Soong: dtc-lexer.l meng-include "dtc-parser.h"
+    ( cd "$src" && bison -d -o dtc-parser.c dtc-parser.y && flex -o dtc-lexer.c dtc-lexer.l ) \
         || die "bison/flex gagal untuk dtc"
     # shellcheck disable=SC2086
     clang "${cf[@]}" -o "$TOOLS/dtc" "$src"/{checks,data,dtc,flattree,fstree,livetree,srcpos,treesource,util}.c \
-        "$src/dtc-lexer.lex.c" "$src/dtc-parser.tab.c" $lib || die "Gagal compile dtc"
+        "$src/dtc-lexer.c" "$src/dtc-parser.c" $lib || die "Gagal compile dtc"
     for t in fdtget fdtput fdtoverlay fdtoverlaymerge; do
         # shellcheck disable=SC2086
         clang "${cf[@]}" -o "$TOOLS/$t" "$src/$t.c" "$src/util.c" $lib || die "Gagal compile $t"
