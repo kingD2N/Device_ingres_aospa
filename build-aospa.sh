@@ -424,11 +424,11 @@ do_sync() {
     }
 
     unpatch_source
-    local n slog="$HOME/sync-aospa.log"
-    for n in 1 2 3; do
-        info "repo sync (percobaan $n/3)"
+    local n synced=0 slog="$HOME/sync-aospa.log"
+    for n in 1 2 3 4; do
+        info "repo sync (percobaan $n/4)"
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --force-remove-dirty 2>&1 | tee "$slog"
-        [ "${PIPESTATUS[0]}" -eq 0 ] && break
+        [ "${PIPESTATUS[0]}" -eq 0 ] && { synced=1; break; }
         # repo yang pindah sumber (mis. kamera ke Gurinbone) meninggalkan
         # .repo/projects lama: "hooks is different in ...". Hapus lalu ulang.
         if grep -q 'hooks is different in' "$slog"; then
@@ -442,9 +442,12 @@ do_sync() {
                 | sort -u | while read -r d; do reset_project "$d"; done
             continue
         fi
-        [ "$n" -eq 3 ] && { err "repo sync gagal 3 kali. Coba lagi nanti: bash $SCRIPT sync"; exit 1; }
-        sleep 30
+        [ "$n" -eq 4 ] || sleep 30
     done
+    if [ "$synced" != 1 ]; then
+        err "repo sync gagal 4 kali. Coba lagi nanti: bash $SCRIPT"
+        exit 1
+    fi
     if grep -q 'unsupported checkout state' "$slog" 2>/dev/null; then
         err "Masih ada checkout rusak. Jalankan: bash $SCRIPT reset-ingres  lalu  bash $SCRIPT"
         exit 1
