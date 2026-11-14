@@ -38,5 +38,5 @@
   <project path="packages/apps/DolbyUI" name="Gurinbone/packages_apps_DolbyUI" remote="gh" revision="main" />
   <project path="vendor/JamesDSP" name="MillenniumOSS/android_vendor_JamesDSP" remote="gh" revision="sixteen" clone-depth="1" />
   <project path="vendor/xiaomi/miuicamera-ingres" name="Gurinbone/android_vendor_xiaomi_miuicamera-ingres" remote="gh" revision="lineage-23.2" clone-depth="1" />
-  <project path="device/xiaomi/miuicamera-ingres" name="Ingres-stuff/android_device_xiaomi_miuicamera-ingres" remote="gh" revision="lineage-21" />
+  <project path="device/xiaomi/miuicamera-ingres" name="Gurinbone/android_device_xiaomi_miuicamera-ingres" remote="gh" revision="A17" />
 </manifest>
