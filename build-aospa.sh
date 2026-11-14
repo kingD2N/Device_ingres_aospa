@@ -429,6 +429,14 @@ do_sync() {
         info "repo sync (percobaan $n/3)"
         repo sync -c -j8 --force-sync --no-clone-bundle --no-tags --optimized-fetch --prune --force-remove-dirty 2>&1 | tee "$slog"
         [ "${PIPESTATUS[0]}" -eq 0 ] && break
+        # repo yang pindah sumber (mis. kamera ke Gurinbone) meninggalkan
+        # .repo/projects lama: "hooks is different in ...". Hapus lalu ulang.
+        if grep -q 'hooks is different in' "$slog"; then
+            grep -o 'hooks is different in [^ ]*/\.repo/projects/[^ ]*\.git' "$slog" \
+                | sed 's#.*/\.repo/projects/##; s#\.git$##' | sort -u \
+                | while read -r d; do reset_project "$SRC/$d"; done
+            continue
+        fi
         if grep -q 'unsupported checkout state\|not a git repository\|already exists and is not' "$slog"; then
             grep -o '/[^ :]*\.git: unsupported checkout state' "$slog" | sed 's/: unsupported checkout state//' \
                 | sort -u | while read -r d; do reset_project "$d"; done

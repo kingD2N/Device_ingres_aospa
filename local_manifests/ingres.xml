@@ -36,7 +36,7 @@
   <project path="kernel/xiaomi/sm8450" name="android_kernel_xiaomi_sm8450" remote="d2n" revision="lineage-24.0" clone-depth="1" />
   <project path="kernel/xiaomi/sm8450-devicetrees" name="android_kernel_xiaomi_sm8450-devicetrees" remote="d2n" revision="lineage-24.0" clone-depth="1" />
   <project path="kernel/xiaomi/sm8450-modules" name="LineageOS/android_kernel_xiaomi_sm8450-modules" remote="gh" revision="lineage-24.0" clone-depth="1" />
-  <project path="prebuilts/kernel-build-tools" name="platform/prebuilts/kernel-build-tools" remote="aosp-gs" revision="refs/tags/android-17.0.0_r1" clone-depth="1" />
+  <project path="prebuilts/kernel-build-tools" name="kernel/prebuilts/build-tools" remote="aosp-gs" revision="main-kernel-2025" clone-depth="1" />
   <project path="vendor/ingres/addons" name="kingD2N/LED_ingres_for_Notifikasi_system" remote="gh" revision="addons" />
   <project path="vendor/xiaomi/gamekey" name="Ingres-Centre/android_vendor_xiaomi_gamekey" remote="gh" revision="master" />
   <!-- submodule GameKeys (repo tidak mengambil git submodule) -->
