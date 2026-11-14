@@ -15,6 +15,7 @@
 #   bash build-aospa.sh bersih ~/folderlain   # sekalian hapus folder lain yang disebut
 #   bash build-aospa.sh upload     # upload ulang isi ~/hasil-aospa ke GoFile
 #   bash build-aospa.sh reset-ingres   # hapus repo ingres/xiaomi lama di source lalu sync ulang
+#   bash build-aospa.sh kernel-los24 [rom.zip]   # siapkan kernel LineageOS 24 dari zip ROM (khusus AOSPA)
 #
 # Pengaturan (opsional, isi sebelum perintah, contoh: JOBS=8 bash build-aospa.sh):
 #   ROM=penguin        pilih ROM: aospa (default) / penguin
@@ -23,6 +24,8 @@
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
 #   GAPPS=1 / GAPPS=0  PenguinOS: paksa GApps (-gms) / vanilla (AOSPA selalu GApps)
+#   KERNEL=los24       AOSPA (default): kernel LineageOS 24 dari ~/ingres-kernel-los24
+#   KERNEL=mix         kernel prebuilt bawaan device/xiaomi/ingres-kernel (MIX, default PenguinOS)
 #   GOFILE=0           jangan upload hasil ke GoFile (default: upload otomatis)
 #   GOFILE_TOKEN=xxx   token akun GoFile (opsional, agar file masuk ke akun sendiri)
 
@@ -46,6 +49,10 @@ case "$ROM" in
     *) echo "ROM tidak dikenal: $ROM (pakai aospa / penguin)" >&2; exit 1 ;;
 esac
 HASIL_DIR="$HOME/hasil-$ROM"
+# Kernel: AOSPA memakai kernel LineageOS 24 (sama dengan ROM AOSP kita), PenguinOS tetap MIX
+if [ "$ROM" = aospa ]; then KERNEL="${KERNEL:-los24}"; else KERNEL="${KERNEL:-mix}"; fi
+KERNEL_DIR="$HOME/ingres-kernel-los24"
+KRAW="https://raw.githubusercontent.com/kingD2N/android_device_xiaomi_ingres-kernel/calcite"
 SCRIPT="$(readlink -f "$0")"
 CMD="${1:-all}"
 
@@ -80,6 +87,8 @@ if [ "$CMD" = "bersih" ]; then
              "$HOME/lunaris" "$HOME/hasil-lunaris" "$HOME/build-lunaris.log" "$HOME/lunaris-sisa-lama" \
              "$HOME/axion" "$HOME/hasil-axion" "$HOME/build-axion.log" "$HOME/axion-sisa-lama" \
              "$HOME/ascp" "$HOME/hasil-ascp" "$HOME/build-ascp.log" "$HOME/ascp-sisa-lama" \
+             "$HOME/pixelos" "$HOME/pixelos-sisa-lama" "$HOME/evox" "$HOME/evox-sisa-lama" \
+             "$HOME/infinity" "$HOME/infinity-sisa-lama" "$HOME/uwu" \
              "$HOME/.ccache" "$@"; do
         [ -e "$d" ] || continue
         case "$(readlink -f "$d")" in
@@ -96,7 +105,7 @@ if [ "$CMD" = "bersih" ]; then
     echo "Simpan dulu zip ROM lama (mis. ~/hasil-los24, ~/hasil-ascp) lewat SFTP kalau masih perlu."
     read -r -p "Ketik YA lalu Enter untuk menghapus: " jawab
     [ "$jawab" = "YA" ] || { info "Batal, tidak ada yang dihapus."; exit 0; }
-    for s in los24 lunaris axion ascp penguin aospa; do
+    for s in los24 lunaris axion ascp penguin aospa pixelos evox infinity uwu; do
         [ "$s" = "$SESSION" ] && [ -n "${TMUX:-}" ] && continue
         byobu kill-session -t "$s" >/dev/null 2>&1 && info "Sesi byobu '$s' dihentikan"
     done
@@ -109,13 +118,13 @@ if [ "$CMD" = "bersih" ]; then
 fi
 
 # ------------------------------------------- selalu jalan di dalam byobu
-if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" != "reset-ingres" ]; then
+if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" != "reset-ingres" ] && [ "$CMD" != "kernel-los24" ]; then
     command -v byobu >/dev/null || { err "byobu tidak ada di server"; exit 1; }
     if byobu ls 2>/dev/null | grep -q "^$SESSION"; then
         err "Sesi '$SESSION' sudah ada (satu build per akun). Masuk dengan: byobu attach -t $SESSION"
         exit 1
     fi
-    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}' GAPPS='${GAPPS:-}'"
+    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}' GAPPS='${GAPPS:-}' KERNEL='$KERNEL'"
     byobu new-session -d -s "$SESSION" "$envs bash '$SCRIPT' $CMD; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read"
     ok "Build berjalan di sesi byobu '$SESSION' (aman kalau Termius ditutup)."
     echo "   Lihat layar build : byobu attach -t $SESSION   (keluar lagi: F6)"
@@ -136,6 +145,10 @@ check_tools() {
     [ -z "$miss" ] || { err "Alat belum terpasang di server:$miss (minta pemilik server memasangnya)"; exit 1; }
     git config --global user.name >/dev/null || git config --global user.name "kingD2N"
     git config --global user.email >/dev/null || git config --global user.email "114895723+kingD2N@users.noreply.github.com"
+    # Kalau ~/.gitconfig tidak terbaca (profil server), repo init gagal "Committer identity unknown".
+    export GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-$(git config --global user.name 2>/dev/null || echo kingD2N)}"
+    export GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-$(git config --global user.email 2>/dev/null || echo 114895723+kingD2N@users.noreply.github.com)}"
+    export GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-$GIT_AUTHOR_NAME}" GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$GIT_AUTHOR_EMAIL}"
     git lfs install >/dev/null 2>&1 || true
     CCACHE_EXEC="$(command -v ccache)"
     export USE_CCACHE=1 CCACHE_EXEC CCACHE_DIR="${CCACHE_DIR:-$HOME/.ccache}"
@@ -218,6 +231,8 @@ unpatch_source() {
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
     git -C vendor/qcom/common checkout -q -- . 2>/dev/null || true
     git -C vendor/xiaomi/gamekey checkout -q -- third_party/rust daemon/src 2>/dev/null || true
+    git -C device/xiaomi/ingres-kernel checkout -q -- . 2>/dev/null || true
+    git -C device/xiaomi/ingres-kernel clean -fdq 2>/dev/null || true
 }
 
 # Prebuilt "X_xiaomi" (stem X, overrides X) dan prebuilt "X" dari vendor/qcom/common
@@ -277,6 +292,73 @@ fix_gamekey() {
         info "Tambalan: GameKeys -> rustutils::android::system_properties"
     fi
 }
+# Kernel LineageOS 24 untuk AOSPA: Image, dtb, dtbo dan modul diambil dari zip ROM
+# LineageOS 24 / ROM AOSP kita (payload.bin) dengan update-prebuilt.sh milik repo
+# android_device_xiaomi_ingres-kernel, termasuk cek CRC semua modul terhadap kernel.
+# Hasil disimpan di ~/ingres-kernel-los24 (di luar source, tidak ikut "bersih").
+do_kernel_los24() {
+    local zip="${1:-}" t miss="" n_vr n_dl
+    if [ -z "$zip" ]; then
+        zip=$(ls -t "$HOME"/hasil-los24/lineage-24*.zip "$HOME"/lineage-24*.zip \
+                    "$HOME"/hasil-pixelos/PixelOS_*.zip "$HOME"/hasil-evox/EvolutionX-*.zip \
+                    "$HOME"/hasil-infinity/Project_Infinity-X-*.zip 2>/dev/null | grep -v target_files | head -n 1)
+    fi
+    if [ -z "$zip" ] || [ ! -f "$zip" ]; then
+        err "Zip ROM LineageOS 24 tidak ditemukan."
+        echo "   Upload zip LOS 24 (atau ROM AOSP A17 kita) ke folder home lewat SFTP Termius, lalu:"
+        echo "   bash $SCRIPT kernel-los24 ~/nama-file.zip"
+        exit 1
+    fi
+    for t in unzip cpio file python3 curl strings; do command -v "$t" >/dev/null || miss="$miss $t"; done
+    command -v lz4 >/dev/null || command -v zstd >/dev/null || miss="$miss lz4"
+    command -v fsck.erofs >/dev/null || command -v debugfs >/dev/null || miss="$miss erofs-utils"
+    [ -z "$miss" ] || { err "Alat belum terpasang di server:$miss (minta pemilik server memasangnya)"; exit 1; }
+    export PATH="$HOME/.local/bin:$PATH"
+    if ! command -v kallsyms-finder >/dev/null; then
+        info "Memasang vmlinux-to-elf (kallsyms-finder) ke ~/.local"
+        pip3 install -q --user vmlinux-to-elf 2>/dev/null || pip3 install -q --user --break-system-packages vmlinux-to-elf
+        command -v kallsyms-finder >/dev/null || { err "kallsyms-finder gagal dipasang"; exit 1; }
+    fi
+    info "Mengambil alat ekstrak dari android_device_xiaomi_ingres-kernel (calcite)"
+    rm -rf "$KERNEL_DIR"; mkdir -p "$KERNEL_DIR/tools"
+    for f in update-prebuilt.sh tools/payload_extract.py tools/vboot.py tools/crccheck.py; do
+        curl -fsSL -o "$KERNEL_DIR/$f" "$KRAW/$f?$(date +%s)" || { err "Gagal mengunduh $f"; exit 1; }
+    done
+    info "Ekstrak kernel + modul dari $(basename "$zip")"
+    if ! bash "$KERNEL_DIR/update-prebuilt.sh" "$zip"; then
+        err "Ekstrak gagal (exit 3 = CRC modul tidak cocok dengan kernel). Kernel LOS 24 tidak dipasang."
+        rm -rf "$KERNEL_DIR"; exit 1
+    fi
+    n_vr=$(ls "$KERNEL_DIR"/vendor_ramdisk/*.ko 2>/dev/null | wc -l)
+    n_dl=$(ls "$KERNEL_DIR"/vendor_dlkm/*.ko 2>/dev/null | wc -l)
+    if [ "$n_vr" -lt 300 ] || [ "$n_dl" -lt 300 ]; then
+        err "Modul terlalu sedikit (ramdisk $n_vr, dlkm $n_dl). Zip ini bukan ROM ingres yang lengkap?"
+        rm -rf "$KERNEL_DIR"; exit 1
+    fi
+    basename "$zip" > "$KERNEL_DIR/SOURCE"
+    ok "Kernel LineageOS 24 siap: $(strings "$KERNEL_DIR/Image" | grep -m1 '^Linux version 5' | cut -d' ' -f3)"
+    echo "   Sumber: $(basename "$zip"), modul: $n_vr ramdisk + $n_dl vendor_dlkm"
+    echo "   Lanjutkan dengan: bash $SCRIPT"
+}
+
+# Pasang kernel pilihan ke device/xiaomi/ingres-kernel (KERNEL_PREBUILT_DIR) setelah sync
+apply_kernel() {
+    local d=device/xiaomi/ingres-kernel
+    if [ "$KERNEL" != los24 ]; then
+        info "Kernel: prebuilt bawaan $d ($(strings $d/Image 2>/dev/null | grep -m1 '^Linux version 5' | cut -d' ' -f3))"
+        return
+    fi
+    if [ ! -f "$KERNEL_DIR/Image" ]; then
+        err "Kernel LineageOS 24 belum disiapkan. Jalankan dulu: bash $SCRIPT kernel-los24"
+        echo "   (atau pakai kernel MIX: KERNEL=mix bash $SCRIPT)"
+        exit 1
+    fi
+    rm -rf "$d/vendor_ramdisk" "$d/vendor_dlkm" "$d/dtbs"
+    cp -a "$KERNEL_DIR/Image" "$KERNEL_DIR/System.map" "$d/"
+    cp -a "$KERNEL_DIR/dtbs" "$KERNEL_DIR/vendor_ramdisk" "$KERNEL_DIR/vendor_dlkm" "$d/"
+    info "Kernel: LineageOS 24 $(strings $d/Image | grep -m1 '^Linux version 5' | cut -d' ' -f3) (dari $(cat "$KERNEL_DIR/SOURCE" 2>/dev/null))"
+}
+
 patch_source() {
     fix_dolby_vision
     # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
@@ -494,6 +576,7 @@ case "$CMD" in
     sync)  check_tools; do_sync ;;
     build) check_tools; do_build ;;
     upload) do_upload ;;
+    kernel-los24) do_kernel_los24 "${2:-}" ;;
     reset-ingres)
         cd "$SRC" 2>/dev/null || { err "Folder $SRC tidak ada"; exit 1; }
         for d in device/xiaomi/ingres device/xiaomi/ingres-kernel device/xiaomi/sm8450-common \
@@ -508,5 +591,5 @@ case "$CMD" in
         rm -rf "${SRC:?}/out" "$HASIL_DIR"
         ok "Bersih. Ruang disk kosong: $(df -h --output=avail "$HOME" | tail -n 1)"
         ;;
-    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih | reset-ingres)"; exit 1 ;;
+    *) err "Perintah tidak dikenal: $CMD (pakai: all | sync | build | upload | clean | status | bersih | reset-ingres | kernel-los24)"; exit 1 ;;
 esac
