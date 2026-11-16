@@ -7,7 +7,7 @@
 #
 # Langsung tanpa menu (untuk snippet satu klik):
 #   bash <(curl -fsSL .../rom-menu.sh) evox            # sync + build
-#   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean
+#   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean, bersih
 #   GAPPS=0 bash <(curl -fsSL .../rom-menu.sh) lunaris # pengaturan ditulis di depan seperti biasa
 
 set -uo pipefail
@@ -36,6 +36,7 @@ ACTIONS=(
     "sync|sync source saja"
     "upload|upload ulang hasil ke GoFile"
     "clean|hapus hasil build lama (out/)"
+    "bersih|hapus source ROM LAIN (ROM pilihan tetap aman, ada konfirmasi YA)"
 )
 
 c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_er=$'\e[1;31m'; c_0=$'\e[0m'
@@ -79,11 +80,14 @@ if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%|*}")"
     action="${2:-}"
     extra=""
+    shift $(( $# >= 2 ? 2 : 1 ))
+    args=("$@")
 else
     rom=$(pick_rom) || exit 1
     action=$(pick_action) || exit 1
     echo "Pengaturan tambahan (kosongkan kalau tidak ada), contoh: GAPPS=0 VARIANT=user"
     read -rp "> " extra
+    args=()
 fi
 
 key="${rom%%|*}"; rest="${rom#*|}"
@@ -104,9 +108,9 @@ bash -n "$script.new" || die "Script yang diunduh rusak, coba lagi"
 mv -f "$script.new" "$script"
 
 echo "${c_ok}[OK]${c_0} bash $script ${action:-(sync + build)} ${opts[*]:-}"
-[ "${MENU_DRY:-0}" = 1 ] && exit 0
+[ "${MENU_DRY:-0}" = 1 ] && { echo "DRY: ${action:-} ${args[*]:-}"; exit 0; }
 if [ ${#opts[@]} -gt 0 ]; then
-    exec env "${opts[@]}" bash "$script" ${action:+"$action"}
+    exec env "${opts[@]}" bash "$script" ${action:+"$action"} "${args[@]}"
 else
-    exec bash "$script" ${action:+"$action"}
+    exec bash "$script" ${action:+"$action"} "${args[@]}"
 fi
