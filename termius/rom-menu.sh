@@ -22,19 +22,20 @@ RAW=https://raw.githubusercontent.com/kingD2N
 GH=https://github.com
 DEV=android_device_xiaomi_ingres-old
 
-# kunci ; nama ; awalan branch device tree ; branch cadangan ; script ; repo resmi ; pola branch resmi ; pengaturan
+# kunci ; nama ; awalan branch device tree ; branch cadangan ; script ; repo resmi ; pola branch resmi ; pengaturan ;
+#   varian bawaan ; daftar varian ; GApps bawaan ; daftar GApps (nilai=label, nilai kosong = tidak ada pilihan)
 ROMS=(
-    "evox;Evolution X;evox-;evox-cnb;build-evox.sh;Evolution-X/manifest;^[a-z]{3}$;"
-    "los24;LineageOS;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;"
-    "pixelos;PixelOS;pixelos-;pixelos-17;build-pixelos.sh;PixelOS-AOSP/android_manifest;^(fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$;"
-    "lunaris;Lunaris;lunaris-;lunaris-16.2;build-lunaris.sh;Lunaris-AOSP/android;^[0-9]+(\.[0-9]+)?$;"
-    "alpha;AlphaDroid;alpha-;alpha-16.2;build-alpha.sh;AlphaDroid-Project/manifest;^alpha-[0-9]+(\.[0-9]+)?$;"
-    "axion;AxionOS;axion-;axion-23.2;build-axion.sh;AxionAOSP/android;^lineage-[0-9]+\.[0-9]+$;"
-    "ascp;ASCP;ascp-;ascp-17;build-ascp.sh;Pixelify-AOSP/platform_manifest;^[0-9]+(\.[0-9]+)?$;"
-    "infinity;Infinity X;infinity-;infinity-17;build-infinity.sh;ProjectInfinity-X/manifest;^[0-9]+(\.[0-9]+)?$;"
-    "uwu;uwuAOSP;uwu-;uwu-17.0;build-uwu.sh;uwuAOSP/platform_manifests;^uwu-[0-9]+(\.[0-9]+)?$;"
-    "aospa;AOSPA;;;build-aospa.sh;;;ROM=aospa"
-    "penguin;PenguinOS;;;build-aospa.sh;;;ROM=penguin"
+    "evox;Evolution X;evox-;evox-cnb;build-evox.sh;Evolution-X/manifest;^[a-z]{3}$;;user;user,userdebug;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
+    "los24;LineageOS;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;;user;user,userdebug;;=Vanilla saja (LineageOS tanpa GApps)"
+    "pixelos;PixelOS;pixelos-;pixelos-17;build-pixelos.sh;PixelOS-AOSP/android_manifest;^(fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$;;user;user,userdebug,both;;=GApps bawaan (tidak ada vanilla)"
+    "lunaris;Lunaris;lunaris-;lunaris-16.2;build-lunaris.sh;Lunaris-AOSP/android;^[0-9]+(\.[0-9]+)?$;;userdebug;user,userdebug,both;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
+    "alpha;AlphaDroid;alpha-;alpha-16.2;build-alpha.sh;AlphaDroid-Project/manifest;^alpha-[0-9]+(\.[0-9]+)?$;;userdebug;user,userdebug,both;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
+    "axion;AxionOS;axion-;axion-23.2;build-axion.sh;AxionAOSP/android;^lineage-[0-9]+\.[0-9]+$;;user;user,userdebug;gms;gms=GApps lengkap,pico=GApps minimal,core=GApps inti,0=Vanilla"
+    "ascp;ASCP;ascp-;ascp-17;build-ascp.sh;Pixelify-AOSP/platform_manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
+    "infinity;Infinity X;infinity-;infinity-17;build-infinity.sh;ProjectInfinity-X/manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;1;1=GApps,0=Vanilla"
+    "uwu;uwuAOSP;uwu-;uwu-17.0;build-uwu.sh;uwuAOSP/platform_manifests;^uwu-[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
+    "aospa;AOSPA;;;build-aospa.sh;;;ROM=aospa;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
+    "penguin;PenguinOS;;;build-aospa.sh;;;ROM=penguin;user;user,userdebug;;=Bawaan PenguinOS,1=GApps,0=Vanilla"
 )
 ALIASES="lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
@@ -119,6 +120,7 @@ pick_action() {
 }
 
 args=()
+extra=""
 if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
     action="${2:-}"
@@ -128,14 +130,52 @@ if [ $# -ge 1 ]; then
 else
     rom=$(pick_rom) || exit 1
     action=$(pick_action) || exit 1
-    echo "Pengaturan tambahan (kosongkan kalau tidak ada), contoh: GAPPS=0 VARIANT=user"
+    interactive=1
+fi
+
+IFS=';' read -r key name prefix fallback sname official pattern preset vdef vlist gdef glist <<<"$rom"
+
+# Pilih varian & GApps (hanya untuk perintah yang membuild, dan hanya lewat menu)
+chosen=""
+if [ "${interactive:-0}" = 1 ] && { [ -z "$action" ] || [ "$action" = build ]; }; then
+    vs=(${vlist//,/ })
+    echo "${c_in}== Pilih varian ==${c_0}"
+    i=1; d=1
+    for v in "${vs[@]}"; do
+        case "$v" in
+            user) label="user (rilis)" ;; userdebug) label="userdebug (debug, adb root)" ;;
+            both) label="user + userdebug sekaligus" ;; *) label="$v" ;;
+        esac
+        [ "$v" = "$vdef" ] && { label="$label  [bawaan]"; d=$i; }
+        printf '  %d) %s\n' $i "$label"; i=$((i + 1))
+    done
+    read -rp "Nomor varian [$d]: " n; n="${n:-$d}"
+    [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#vs[@]} ] || die "Pilihan varian tidak ada"
+    chosen="VARIANT=${vs[$((n - 1))]}"
+
+    IFS=',' read -ra gs <<<"$glist"
+    if [ ${#gs[@]} -gt 1 ]; then
+        echo "${c_in}== Pilih GApps / Vanilla ==${c_0}"
+        i=1; d=1
+        for g in "${gs[@]}"; do
+            label="${g#*=}"
+            [ "${g%%=*}" = "$gdef" ] && { label="$label  [bawaan]"; d=$i; }
+            printf '  %d) %s\n' $i "$label"; i=$((i + 1))
+        done
+        read -rp "Nomor GApps [$d]: " n; n="${n:-$d}"
+        [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#gs[@]} ] || die "Pilihan GApps tidak ada"
+        g="${gs[$((n - 1))]%%=*}"
+        [ -n "$g" ] && chosen="$chosen GAPPS=$g"
+    else
+        echo "GApps: ${glist#*=}"
+    fi
+
+    echo "Pengaturan tambahan (kosongkan kalau tidak ada), contoh: DECRYPT=0 GOFILE=0"
     read -rp "> " extra
 fi
 
-IFS=';' read -r key name prefix fallback sname official pattern preset <<<"$rom"
-
 opts=()
-for kv in $preset $extra; do
+for kv in $preset $chosen $extra; do
     [[ "$kv" =~ ^[A-Z_][A-Z0-9_]*=[A-Za-z0-9_./~:-]*$ ]] || die "Pengaturan '$kv' tidak valid (tulis seperti GAPPS=0)"
     [[ "$kv" == *=~/* ]] && kv="${kv%%=*}=$HOME/${kv#*=~/}"
     opts+=("$kv")
@@ -158,6 +198,16 @@ if [ -n "$prefix" ]; then
     # Bandingkan dengan source resmi
     if [ -n "$official" ]; then
         top=$(heads "$GH/$official" | grep -E "$pattern" | newest)
+        # Branch baru kadang cuma salinan manifest lama (revisi bawaan masih versi
+        # sebelumnya, mis. AxionOS lineage-24.0 -> lineage-23.2): pakai revisi aslinya.
+        if [ -n "$top" ]; then
+            real=$(curl -fsSL "https://raw.githubusercontent.com/$official/$top/default.xml" 2>/dev/null \
+                   | grep -oE '<default[^>]*revision="(refs/heads/)?[^"]+"' \
+                   | grep -oE 'revision="[^"]+"' | sed -E 's|revision="(refs/heads/)?||; s|"$||' | head -n 1)
+            if [ -n "$real" ] && [ "$real" != "$top" ] && grep -qE "$pattern" <<<"$real"; then
+                top="$real"
+            fi
+        fi
         mine=$(verkey "${branch#"$prefix"}" 2>/dev/null || true)
         if [ -n "$top" ] && [ -n "$mine" ]; then
             if [[ "$(verkey "$top")" > "$mine" ]]; then
