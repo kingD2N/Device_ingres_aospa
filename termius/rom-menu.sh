@@ -26,7 +26,7 @@ DEV=android_device_xiaomi_ingres-old
 #   varian bawaan ; daftar varian ; GApps bawaan ; daftar GApps (nilai=label, nilai kosong = tidak ada pilihan)
 ROMS=(
     "evox;Evolution X;evox-;evox-cnb;build-evox.sh;Evolution-X/manifest;^[a-z]{3}$;;user;user,userdebug;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
-    "los24;LineageOS;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;;user;user,userdebug;;=Vanilla saja (LineageOS tanpa GApps)"
+    "los24;LineageOS;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;;user;user,userdebug;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
     "pixelos;PixelOS;pixelos-;pixelos-17;build-pixelos.sh;PixelOS-AOSP/android_manifest;^(fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$;;user;user,userdebug,both;;=GApps bawaan (tidak ada vanilla)"
     "lunaris;Lunaris;lunaris-;lunaris-16.2;build-lunaris.sh;Lunaris-AOSP/android;^[0-9]+(\.[0-9]+)?$;;userdebug;user,userdebug,both;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
     "alpha;AlphaDroid;alpha-;alpha-16.2;build-alpha.sh;AlphaDroid-Project/manifest;^alpha-[0-9]+(\.[0-9]+)?$;;userdebug;user,userdebug,both;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
