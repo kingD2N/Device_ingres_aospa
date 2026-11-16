@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #
 # Menu build ROM ingres (POCO F4 GT) untuk Termius - pilih ROM, pilih perintah, jalan.
-# Script build ROM selalu diunduh versi terbaru dari GitHub sebelum dijalankan.
 #
 #   bash <(curl -fsSL https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/termius/rom-menu.sh)
 #
@@ -9,26 +8,37 @@
 #   bash <(curl -fsSL .../rom-menu.sh) evox            # sync + build
 #   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean, bersih
 #   GAPPS=0 bash <(curl -fsSL .../rom-menu.sh) lunaris # pengaturan ditulis di depan seperti biasa
+#
+# Pembaruan otomatis:
+#  - Menu ini dan script build ROM selalu diunduh versi terbaru dari GitHub.
+#  - Versi ROM dipilih otomatis: branch device tree terbaru untuk ROM itu
+#    (mis. lunaris-16.2 -> lunaris-17 begitu branch-nya dibuat).
+#  - Kalau source resmi ROM sudah punya versi Android lebih baru tapi device tree
+#    belum siap, menu memberi tahu. ROM tetap dibuild dengan versi terakhir yang siap.
 
 set -uo pipefail
 
 RAW=https://raw.githubusercontent.com/kingD2N
+GH=https://github.com
 DEV=android_device_xiaomi_ingres-old
 
-# kunci | nama | repo/branch/script | pengaturan bawaan
+# kunci ; nama ; awalan branch device tree ; branch cadangan ; script ; repo resmi ; pola branch resmi ; pengaturan
 ROMS=(
-    "evox|Evolution X 12.4 (A17)|$DEV/evox-cnb/build-evox.sh|"
-    "los24|LineageOS 24 (A17)|$DEV/lineage-24.0/build-ingres.sh|"
-    "pixelos|PixelOS (A17)|$DEV/pixelos-17/build-pixelos.sh|"
-    "lunaris|Lunaris-AOSP (A16)|$DEV/lunaris-16.2/build-lunaris.sh|"
-    "alpha|AlphaDroid 4.7 (A16)|$DEV/alpha-16.2/build-alpha.sh|"
-    "axion|AxionOS (A16)|$DEV/axion-23.2/build-axion.sh|"
-    "ascp|ASCP (A17)|$DEV/ascp-17/build-ascp.sh|"
-    "infinity|Infinity X (A17)|$DEV/infinity-17/build-infinity.sh|"
-    "uwu|uwuAOSP (A17)|$DEV/uwu-17.0/build-uwu.sh|"
-    "aospa|AOSPA calcite (A17)|Device_ingres_aospa/main/build-aospa.sh|ROM=aospa"
-    "penguin|PenguinOS (A17)|Device_ingres_aospa/main/build-aospa.sh|ROM=penguin"
+    "evox;Evolution X;evox-;evox-cnb;build-evox.sh;Evolution-X/manifest;^[a-z]{3}$;"
+    "los24;LineageOS;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;"
+    "pixelos;PixelOS;pixelos-;pixelos-17;build-pixelos.sh;PixelOS-AOSP/android_manifest;^(fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)$;"
+    "lunaris;Lunaris;lunaris-;lunaris-16.2;build-lunaris.sh;Lunaris-AOSP/android;^[0-9]+(\.[0-9]+)?$;"
+    "alpha;AlphaDroid;alpha-;alpha-16.2;build-alpha.sh;AlphaDroid-Project/manifest;^alpha-[0-9]+(\.[0-9]+)?$;"
+    "axion;AxionOS;axion-;axion-23.2;build-axion.sh;AxionAOSP/android;^lineage-[0-9]+\.[0-9]+$;"
+    "ascp;ASCP;ascp-;ascp-17;build-ascp.sh;Pixelify-AOSP/platform_manifest;^[0-9]+(\.[0-9]+)?$;"
+    "infinity;Infinity X;infinity-;infinity-17;build-infinity.sh;ProjectInfinity-X/manifest;^[0-9]+(\.[0-9]+)?$;"
+    "uwu;uwuAOSP;uwu-;uwu-17.0;build-uwu.sh;uwuAOSP/platform_manifests;^uwu-[0-9]+(\.[0-9]+)?$;"
+    "aospa;AOSPA;;;build-aospa.sh;;;ROM=aospa"
+    "penguin;PenguinOS;;;build-aospa.sh;;;ROM=penguin"
 )
+ALIASES="lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
+# Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
+BLOCKED=" alpha-17.0 "
 ACTIONS=(
     "|sync + build (dari awal)"
     "build|build saja (lanjut build sebelumnya)"
@@ -39,13 +49,45 @@ ACTIONS=(
     "bersih|hapus source ROM LAIN (ROM pilihan tetap aman, ada konfirmasi YA)"
 )
 
-c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_er=$'\e[1;31m'; c_0=$'\e[0m'
+c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_wr=$'\e[1;33m'; c_er=$'\e[1;31m'; c_0=$'\e[0m'
 die() { echo "${c_er}[GAGAL]${c_0} $*" >&2; exit 1; }
 
+# Nomor versi Android dari nama branch, untuk dibandingkan: 17, 16.2, lineage-24.0,
+# seventeen, cnb (kode huruf: u=14 v=15 b=16 c=17 d=18 ...). Gagal kalau tidak dikenali.
+verkey() {
+    local s="$1" n major minor=0 l
+    case "$s" in
+        fourteen) major=14 ;; fifteen) major=15 ;; sixteen) major=16 ;; seventeen) major=17 ;;
+        eighteen) major=18 ;; nineteen) major=19 ;; twenty) major=20 ;;
+        *[0-9]*)
+            n=$(grep -oE '[0-9]+(\.[0-9]+)?' <<<"$s" | tail -n 1)
+            major=${n%%.*}; [ "$n" != "$major" ] && minor=${n#*.} ;;
+        [a-z][a-z][a-z])
+            l=$(printf '%d' "'${s:0:1}")
+            if [ "$l" -ge 117 ]; then major=$((14 + l - 117)); else major=$((16 + l - 98)); fi ;;
+        *) return 1 ;;
+    esac
+    printf '%04d.%04d\n' "$((10#$major))" "$((10#$minor))"
+}
+
+# Branch dengan versi tertinggi dari daftar (satu per baris).
+newest() {
+    local b k best="" bestk=""
+    while read -r b; do
+        [ -n "$b" ] || continue
+        k=$(verkey "$b") || continue
+        if [ -z "$bestk" ] || [[ "$k" > "$bestk" ]]; then best="$b"; bestk="$k"; fi
+    done
+    echo "$best"
+}
+
+heads() { timeout 40 git ls-remote --heads "$1" 2>/dev/null | sed 's|.*refs/heads/||'; }
+
 find_rom() {
-    local r
+    local r k="$1" a
+    for a in $ALIASES; do [ "${a%%=*}" = "$k" ] && k="${a#*=}"; done
     for r in "${ROMS[@]}"; do
-        [ "${r%%|*}" = "$1" ] && { echo "$r"; return 0; }
+        [ "${r%%;*}" = "$k" ] && { echo "$r"; return 0; }
     done
     return 1
 }
@@ -54,7 +96,7 @@ pick_rom() {
     local i=1 r n
     echo "${c_in}== Pilih ROM ==${c_0}" >&2
     for r in "${ROMS[@]}"; do
-        n="${r#*|}"; printf '  %2d) %s\n' $i "${n%%|*}" >&2
+        n="${r#*;}"; printf '  %2d) %s\n' $i "${n%%;*}" >&2
         i=$((i + 1))
     done
     read -rp "Nomor ROM: " n
@@ -76,8 +118,9 @@ pick_action() {
     echo "${a%%|*}"
 }
 
+args=()
 if [ $# -ge 1 ]; then
-    rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%|*}")"
+    rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
     action="${2:-}"
     extra=""
     shift $(( $# >= 2 ? 2 : 1 ))
@@ -87,13 +130,9 @@ else
     action=$(pick_action) || exit 1
     echo "Pengaturan tambahan (kosongkan kalau tidak ada), contoh: GAPPS=0 VARIANT=user"
     read -rp "> " extra
-    args=()
 fi
 
-key="${rom%%|*}"; rest="${rom#*|}"
-name="${rest%%|*}"; rest="${rest#*|}"
-path="${rest%%|*}"; preset="${rest#*|}"
-script="$HOME/$(basename "$path")"
+IFS=';' read -r key name prefix fallback sname official pattern preset <<<"$rom"
 
 opts=()
 for kv in $preset $extra; do
@@ -102,13 +141,46 @@ for kv in $preset $extra; do
     opts+=("$kv")
 done
 
+# ---------------------------------------------- pilih versi ROM otomatis
+if [ -n "$prefix" ]; then
+    branch=""
+    devheads=$(heads "$GH/kingD2N/$DEV")
+    if [ -n "$devheads" ]; then
+        branch=$(grep "^${prefix}" <<<"$devheads" | while read -r b; do
+                     [[ "$BLOCKED" == *" $b "* ]] && continue
+                     k=$(verkey "${b#"$prefix"}") && echo "$k $b"
+                 done | sort | tail -n 1 | cut -d' ' -f2)
+    fi
+    [ -n "$branch" ] || branch="$fallback"
+    path="$DEV/$branch/$sname"
+    echo "${c_in}[..]${c_0} $name: versi device tree terbaru = $branch"
+
+    # Bandingkan dengan source resmi
+    if [ -n "$official" ]; then
+        top=$(heads "$GH/$official" | grep -E "$pattern" | newest)
+        mine=$(verkey "${branch#"$prefix"}" 2>/dev/null || true)
+        if [ -n "$top" ] && [ -n "$mine" ]; then
+            if [[ "$(verkey "$top")" > "$mine" ]]; then
+                echo "${c_wr}[BARU]${c_0} Source resmi $name sudah punya versi lebih baru: branch '$top'."
+                echo "       Device tree ingres untuk versi itu belum siap, jadi yang dibuild tetap $branch."
+                echo "       Minta dibuatkan dulu (sebut: \"$name rilis $top\")."
+            else
+                echo "${c_ok}[OK]${c_0} Sudah versi terbaru dari source resmi ($top)."
+            fi
+        fi
+    fi
+else
+    path="Device_ingres_aospa/main/$sname"
+fi
+
+script="$HOME/$sname"
 echo "${c_in}[..]${c_0} Unduh script terbaru: $name"
 curl -fsSL -o "$script.new" "$RAW/$path?$(date +%s)" || die "Gagal unduh $RAW/$path"
 bash -n "$script.new" || die "Script yang diunduh rusak, coba lagi"
 mv -f "$script.new" "$script"
 
-echo "${c_ok}[OK]${c_0} bash $script ${action:-(sync + build)} ${opts[*]:-}"
-[ "${MENU_DRY:-0}" = 1 ] && { echo "DRY: ${action:-} ${args[*]:-}"; exit 0; }
+echo "${c_ok}[OK]${c_0} bash $script ${action:-(sync + build)} ${args[*]:-} ${opts[*]:-}"
+[ "${MENU_DRY:-0}" = 1 ] && { echo "DRY: $path ${action:-} ${args[*]:-}"; exit 0; }
 if [ ${#opts[@]} -gt 0 ]; then
     exec env "${opts[@]}" bash "$script" ${action:+"$action"} "${args[@]}"
 else
