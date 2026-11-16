@@ -36,8 +36,9 @@ ROMS=(
     "uwu;uwuAOSP;uwu-;uwu-17.0;build-uwu.sh;uwuAOSP/platform_manifests;^uwu-[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
     "aospa;AOSPA;;;build-aospa.sh;;;ROM=aospa;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
     "penguin;PenguinOS;;;build-aospa.sh;;;ROM=penguin;user;user,userdebug;;=Bawaan PenguinOS,1=GApps,0=Vanilla"
+    "crdroid;crDroid;crdroid-;crdroid-17.0;build-crdroid.sh;crdroidandroid/android;^[0-9]+\.[0-9]+$;;user;user,userdebug;;=Vanilla saja (crDroid tanpa GApps)"
 )
-ALIASES="lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
+ALIASES="crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
 BLOCKED=" alpha-17.0 "
 ACTIONS=(
