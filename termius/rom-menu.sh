@@ -37,8 +37,9 @@ ROMS=(
     "aospa;AOSPA;;;build-aospa.sh;;;ROM=aospa;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
     "penguin;PenguinOS;;;build-aospa.sh;;;ROM=penguin;user;user,userdebug;;=Bawaan PenguinOS,1=GApps,0=Vanilla"
     "crdroid;crDroid;crdroid-;crdroid-17.0;build-crdroid.sh;crdroidandroid/android;^[0-9]+\.[0-9]+$;;user;user,userdebug;;=Vanilla saja (crDroid tanpa GApps)"
+    "rros;ResurrectedRemix OS;rros-;rros-17.0;build-rros.sh;ResurrectedRemixOS/manifest;^rr-[0-9]+\.[0-9]+$;;user;user,userdebug;1;1=GApps,0=Vanilla"
 )
-ALIASES="crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
+ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
 BLOCKED=" alpha-17.0 "
 ACTIONS=(
