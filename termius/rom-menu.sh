@@ -103,7 +103,9 @@ pick_rom() {
         n="${r#*;}"; printf '  %2d) %s\n' $i "${n%%;*}" >&2
         i=$((i + 1))
     done
+    echo "   0) Lihat semua build yang sedang berjalan" >&2
     read -rp "Nomor ROM: " n
+    if [ "$n" = 0 ]; then echo status; return 0; fi
     [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#ROMS[@]} ] || die "Pilihan ROM tidak ada"
     echo "${ROMS[$((n - 1))]}"
 }
@@ -124,6 +126,11 @@ pick_action() {
 
 args=()
 extra=""
+STATUS_URL="$RAW/termius/build-status.sh"
+case "${1:-}" in
+    status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
+    live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
+esac
 if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
     action="${2:-}"
@@ -132,6 +139,7 @@ if [ $# -ge 1 ]; then
     args=("$@")
 else
     rom=$(pick_rom) || exit 1
+    [ "$rom" = status ] && exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)")
     action=$(pick_action) || exit 1
     interactive=1
 fi
