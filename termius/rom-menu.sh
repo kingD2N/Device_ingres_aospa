@@ -126,7 +126,7 @@ pick_action() {
 
 args=()
 extra=""
-STATUS_URL="$RAW/termius/build-status.sh"
+STATUS_URL="$RAW/Device_ingres_aospa/main/termius/build-status.sh"
 case "${1:-}" in
     status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
