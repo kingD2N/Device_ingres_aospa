@@ -1,0 +1,128 @@
+diff --git a/services/core/java/com/android/server/wm/PerAppRefreshRateStore.java b/services/core/java/com/android/server/wm/PerAppRefreshRateStore.java
+new file mode 100644
+index 00000000..28c379b7
+--- /dev/null
++++ b/services/core/java/com/android/server/wm/PerAppRefreshRateStore.java
+@@ -0,0 +1,81 @@
++/*
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.server.wm;
++
++import android.content.ContentResolver;
++import android.database.ContentObserver;
++import android.os.UserHandle;
++import android.provider.Settings;
++
++import java.util.Collections;
++import java.util.HashMap;
++import java.util.Map;
++
++/**
++ * Per-app refresh rate chosen by the user in Settings (Display > Refresh rate per app).
++ * The Settings app stores "package=rate,package=rate" in Settings.System "per_app_refresh_rate".
++ * The map is read off the WM lock, on the WM handler, and cached; lookups are lock-free.
++ */
++final class PerAppRefreshRateStore {
++    static final String SETTING = "per_app_refresh_rate";
++
++    private static PerAppRefreshRateStore sInstance;
++
++    private final WindowManagerService mWmService;
++    private volatile Map<String, Float> mRates = Collections.emptyMap();
++
++    static synchronized PerAppRefreshRateStore get(WindowManagerService wmService) {
++        if (sInstance == null) {
++            sInstance = new PerAppRefreshRateStore(wmService);
++        }
++        return sInstance;
++    }
++
++    private PerAppRefreshRateStore(WindowManagerService wmService) {
++        mWmService = wmService;
++        final ContentResolver resolver = wmService.mContext.getContentResolver();
++        resolver.registerContentObserver(Settings.System.getUriFor(SETTING), false,
++                new ContentObserver(wmService.mH) {
++                    @Override
++                    public void onChange(boolean selfChange) {
++                        reload();
++                    }
++                }, UserHandle.USER_ALL);
++        wmService.mH.post(this::reload);
++    }
++
++    /** Returns the refresh rate chosen for the package, or 0 if the user did not choose one. */
++    float getRefreshRate(String packageName) {
++        if (packageName == null) {
++            return 0;
++        }
++        final Float rate = mRates.get(packageName);
++        return rate != null ? rate : 0;
++    }
++
++    private void reload() {
++        final String raw = Settings.System.getStringForUser(
++                mWmService.mContext.getContentResolver(), SETTING, UserHandle.USER_CURRENT);
++        final Map<String, Float> rates = new HashMap<>();
++        if (raw != null && !raw.isEmpty()) {
++            for (String entry : raw.split(",")) {
++                final int eq = entry.indexOf('=');
++                if (eq <= 0) {
++                    continue;
++                }
++                try {
++                    final float rate = Float.parseFloat(entry.substring(eq + 1));
++                    if (rate > 0) {
++                        rates.put(entry.substring(0, eq), rate);
++                    }
++                } catch (NumberFormatException ignored) {
++                    // skip malformed entry
++                }
++            }
++        }
++        mRates = rates;
++        mWmService.requestTraversal();
++    }
++}
+diff --git a/services/core/java/com/android/server/wm/RefreshRatePolicy.java b/services/core/java/com/android/server/wm/RefreshRatePolicy.java
+index fe88d1ab..e59043bf 100644
+--- a/services/core/java/com/android/server/wm/RefreshRatePolicy.java
++++ b/services/core/java/com/android/server/wm/RefreshRatePolicy.java
+@@ -275,7 +275,25 @@ class RefreshRatePolicy {
+         return w.mFrameRateVote.reset();
+     }
+ 
++    /**
++     * Refresh rate the user picked for this window's app (Settings > Display > Refresh rate per
++     * app), or 0 if none. Not used while the app holds a camera range, which must stay intact.
++     */
++    private float getUserPickedRefreshRate(WindowState w) {
++        final String packageName = w.getOwningPackage();
++        if (packageName == null || mNonHighRefreshRatePackages.get(packageName) != null) {
++            return 0;
++        }
++        return PerAppRefreshRateStore.get(mWmService).getRefreshRate(packageName);
++    }
++
+     float getPreferredMinRefreshRate(WindowState w) {
++        // The rate the user picked for this app wins over the app's own request and is kept
++        // steady during animations.
++        final float userPicked = getUserPickedRefreshRate(w);
++        if (userPicked > 0) {
++            return userPicked;
++        }
+         // If app is animating, it's not able to control refresh rate because we want the animation
+         // to run in default refresh rate.
+         if (w.isAnimationRunningSelfOrParent() || w.isInsetsAnimationRunning()) {
+@@ -299,6 +317,10 @@ class RefreshRatePolicy {
+     }
+ 
+     float getPreferredMaxRefreshRate(WindowState w) {
++        final float userPicked = getUserPickedRefreshRate(w);
++        if (userPicked > 0) {
++            return userPicked;
++        }
+         // If app is animating, it's not able to control refresh rate because we want the animation
+         // to run in default refresh rate.
+         if (w.isAnimationRunningSelfOrParent() || w.isInsetsAnimationRunning()) {

@@ -230,7 +230,62 @@ fix_dolby_vision() {
     info "Tambalan: composer melaporkan Dolby Vision"
 }
 
+# FPS per aplikasi: Pengaturan > Tampilan > "Refresh rate per aplikasi".
+# Framework (RefreshRatePolicy + PerAppRefreshRateStore) membaca Settings.System per_app_refresh_rate
+# ("paket=rate,paket=rate"); app Settings menyediakan layar pemilihannya. Rate pilihan diabaikan
+# untuk aplikasi kamera (rentang kamera Android 16 tidak diubah). ROM yang sudah punya fitur
+# serupa sendiri tidak ditambal.
+FW_PERAPP_PATCH="$SRC/device/xiaomi/ingres/patches/frameworks_base/0002-per-app-refresh-rate.patch"
+SET_PERAPP_PATCH="$SRC/device/xiaomi/ingres/patches/settings/0001-per-app-refresh-rate.patch"
+# Kembalikan berkas yang disentuh sebuah tambalan ke kondisi repo (tambalan lama tidak bisa di-reverse).
+reset_patch_files() {
+    local dir="$1" patch="$2" f
+    while IFS= read -r f; do
+        if git -C "$dir" ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+            git -C "$dir" checkout -q -- "$f" 2>/dev/null || true
+        else
+            rm -f "$dir/$f"
+        fi
+    done < <(sed -n 's#^diff --git a/\(.*\) b/.*#\1#p' "$patch")
+}
+apply_tree_patch() {
+    local dir="$1" patch="$2" marker="$3" name="$4"
+    [ -f "$patch" ] && [ -f "$dir/$marker" ] || return 0
+    git -C "$dir" apply --check -R "$patch" 2>/dev/null && return 0   # sudah terpasang
+    if ! git -C "$dir" apply "$patch" 2>/dev/null; then
+        reset_patch_files "$dir" "$patch"
+        git -C "$dir" apply "$patch" 2>/dev/null || {
+            err "Tambalan $name tidak cocok lagi (source ROM berubah), dilewati"
+            return 0
+        }
+    fi
+    info "Tambalan: $name"
+}
+fix_per_app_refresh_rate() {
+    [ -f "$SET_PERAPP_PATCH" ] && [ -f packages/apps/Settings/res/xml/display_settings.xml ] || return 0
+    if ! git -C packages/apps/Settings apply --check -R "$SET_PERAPP_PATCH" 2>/dev/null \
+        && grep -rqsiE 'key="[a-z_]*(per_app_refresh|app_refresh_rate|screen_refresh_rate)[a-z_]*"' \
+            packages/apps/Settings/res/xml 2>/dev/null; then
+        info "FPS per aplikasi: ROM ini sudah punya sendiri, tambalan dilewati"
+        return 0
+    fi
+    apply_tree_patch frameworks/base "$FW_PERAPP_PATCH" \
+        services/core/java/com/android/server/wm/RefreshRatePolicy.java \
+        "refresh rate per aplikasi (framework)"
+    apply_tree_patch packages/apps/Settings "$SET_PERAPP_PATCH" \
+        res/xml/display_settings.xml "refresh rate per aplikasi (Settings)"
+}
+unpatch_per_app_refresh_rate() {
+    if [ -f "$FW_PERAPP_PATCH" ] && git -C frameworks/base apply --check -R "$FW_PERAPP_PATCH" 2>/dev/null; then
+        git -C frameworks/base apply -R "$FW_PERAPP_PATCH" || true
+    fi
+    if [ -f "$SET_PERAPP_PATCH" ] && git -C packages/apps/Settings apply --check -R "$SET_PERAPP_PATCH" 2>/dev/null; then
+        git -C packages/apps/Settings apply -R "$SET_PERAPP_PATCH" || true
+    fi
+}
+
 unpatch_source() {
+    unpatch_per_app_refresh_rate
     git -C hardware/qcom/display checkout -q -- composer/hwc_display.cpp 2>/dev/null || true
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
     git -C vendor/qcom/common checkout -q -- . 2>/dev/null || true
@@ -368,6 +423,7 @@ apply_kernel() {
 }
 
 patch_source() {
+    fix_per_app_refresh_rate
     fix_dolby_vision
     # link health_product.mk tertinggal setelah healthd-ext dibuang dari manifest
     if [ ! -d vendor/qcom/opensource/healthd-ext ] && [ -L vendor/qcom/defs/product-defs/vendor/health_product.mk ]; then

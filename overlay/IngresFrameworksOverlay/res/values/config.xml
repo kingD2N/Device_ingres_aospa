@@ -27,8 +27,12 @@
          when adapting to brighter or darker environments.  This parameter controls how quickly
          brightness changes occur in response to an observed change in light level that exceeds the
          hysteresis threshold. -->
-    <integer name="config_autoBrightnessBrighteningLightDebounce">1000</integer>
-    <integer name="config_autoBrightnessDarkeningLightDebounce">1000</integer>
+    <integer name="config_autoBrightnessBrighteningLightDebounce">2500</integer>
+    <integer name="config_autoBrightnessDarkeningLightDebounce">5000</integer>
+
+    <!-- Laju transisi kecerahan (unit/detik, skala 0-255): lebih halus dari default (180/60) -->
+    <integer name="config_brightness_ramp_rate_fast">120</integer>
+    <integer name="config_brightness_ramp_rate_slow">30</integer>
 
     <!-- The maximum range of gamma adjustment possible using the screen
          auto-brightness adjustment setting. -->
@@ -187,17 +191,17 @@
         <item>3.9</item>
         <item>4.6</item>
         <item>5.3</item>
-        <item>17.6</item>
-        <item>24.3</item>
-        <item>29.7</item>
-        <item>34.0</item>
-        <item>46.0</item>
-        <item>59.0</item>
-        <item>76.0</item>
-        <item>81.0</item>
-        <item>82.0</item>
-        <item>82.0</item>
-        <item>82.0</item>
+        <item>8.0</item>
+        <item>11.0</item>
+        <item>14.0</item>
+        <item>17.5</item>
+        <item>25.0</item>
+        <item>33.0</item>
+        <item>42.0</item>
+        <item>51.0</item>
+        <item>60.0</item>
+        <item>68.0</item>
+        <item>75.0</item>
         <item>83.0</item>
         <item>83.0</item>
         <item>83.0</item>
@@ -343,14 +347,14 @@
          the screen brightness is recalculated. See the config_ambientThresholdLevels
          description for how the constraint value is chosen. -->
     <integer-array name="config_ambientBrighteningThresholds">
-        <item>2</item>
-        <item>6</item>
-        <item>10</item>
-        <item>30</item>
         <item>100</item>
-        <item>400</item>
-        <item>600</item>
-        <item>1000</item>
+        <item>100</item>
+        <item>100</item>
+        <item>100</item>
+        <item>120</item>
+        <item>150</item>
+        <item>150</item>
+        <item>200</item>
     </integer-array>
 
     <!-- Array of hysteresis constraint values for darkening, represented as tenths of a
@@ -360,14 +364,14 @@
          the screen brightness is recalculated. See the config_ambientThresholdLevels
          description for how the constraint value is chosen. -->
     <integer-array name="config_ambientDarkeningThresholds">
-        <item>800</item>
-        <item>800</item>
-        <item>500</item>
-        <item>500</item>
-        <item>500</item>
-        <item>500</item>
-        <item>500</item>
-        <item>500</item>
+        <item>250</item>
+        <item>250</item>
+        <item>200</item>
+        <item>200</item>
+        <item>150</item>
+        <item>150</item>
+        <item>150</item>
+        <item>150</item>
     </integer-array>
 
     <!-- The bounding path of the cutout region of the main built-in display.
