@@ -39,8 +39,9 @@ ROMS=(
     "crdroid;crDroid;crdroid-;crdroid-17.0;build-crdroid.sh;crdroidandroid/android;^[0-9]+\.[0-9]+$;;user;user,userdebug;;=Vanilla saja (crDroid tanpa GApps)"
     "rros;ResurrectedRemix OS;rros-;rros-17.0;build-rros.sh;ResurrectedRemixOS/manifest;^rr-[0-9]+\.[0-9]+$;;user;user,userdebug;1;1=GApps,0=Vanilla"
     "derpfest;DerpFest;derpfest-;derpfest-17;build-derpfest.sh;DerpFest-AOSP/android_manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
+    "clover;The Clover Project;clover-;clover-17;build-clover.sh;The-Clover-Project/manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;1;1=GApps,0=Vanilla"
 )
-ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest"
+ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest cloverproject=clover theclover=clover"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
 BLOCKED=" alpha-17.0 "
 ACTIONS=(

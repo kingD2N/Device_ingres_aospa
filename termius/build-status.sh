@@ -24,6 +24,7 @@ ROMS=(
     "crdroid|crDroid|build.log"
     "rros|ResurrectedRemix OS|build.log"
     "derpfest|DerpFest|build-derpfest.log"
+    "clover|The Clover Project|build-clover.log"
 )
 
 c_ok=$'\033[1;32m'; c_wr=$'\033[1;33m'; c_er=$'\033[1;31m'; c_in=$'\033[1;34m'; c_dm=$'\033[2m'; c_0=$'\033[0m'
