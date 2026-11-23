@@ -8,6 +8,7 @@
 #   bash <(curl -fsSL .../rom-menu.sh) evox            # sync + build
 #   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean, bersih
 #   GAPPS=0 bash <(curl -fsSL .../rom-menu.sh) lunaris # pengaturan ditulis di depan seperti biasa
+#   bash <(curl -fsSL .../rom-menu.sh) kunci           # alat server: kunci, backup, pulihkan, disk
 #
 # Pembaruan otomatis:
 #  - Menu ini dan script build ROM selalu diunduh versi terbaru dari GitHub.
@@ -40,9 +41,8 @@ ROMS=(
     "rros;ResurrectedRemix OS;rros-;rros-17.0;build-rros.sh;ResurrectedRemixOS/manifest;^rr-[0-9]+\.[0-9]+$;;user;user,userdebug;1;1=GApps,0=Vanilla"
     "derpfest;DerpFest;derpfest-;derpfest-17;build-derpfest.sh;DerpFest-AOSP/android_manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
     "clover;The Clover Project;clover-;clover-17;build-clover.sh;The-Clover-Project/manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;1;1=GApps,0=Vanilla"
-    "los24ttd;LineageOS + Tanda Tangan kingD2N;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;SIGN=1 MAINTAINER=kingD2N;user;user,userdebug;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
 )
-ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest cloverproject=clover theclover=clover ttd=los24ttd tandatangan=los24ttd lineagettd=los24ttd los24sign=los24ttd signed=los24ttd"
+ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest cloverproject=clover theclover=clover ttd=los24 tandatangan=los24 lineagettd=los24 los24sign=los24 signed=los24 los24ttd=los24"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
 BLOCKED=" alpha-17.0 "
 ACTIONS=(
@@ -100,14 +100,21 @@ find_rom() {
 
 pick_rom() {
     local i=1 r n
-    echo "${c_in}== Pilih ROM ==${c_0}" >&2
+    echo "${c_in}== Pilih ROM ==${c_0}  (semua ROM ditandatangani kingD2N)" >&2
     for r in "${ROMS[@]}"; do
         n="${r#*;}"; printf '  %2d) %s\n' $i "${n%%;*}" >&2
         i=$((i + 1))
     done
+    echo "${c_in}== Server ==${c_0}" >&2
     echo "   0) Lihat semua build yang sedang berjalan" >&2
-    read -rp "Nomor ROM: " n
-    if [ "$n" = 0 ]; then echo status; return 0; fi
+    echo "   k) Kunci tanda tangan: cek / backup / pulihkan" >&2
+    echo "   d) Ruang disk & folder ROM di server" >&2
+    read -rp "Nomor ROM / huruf: " n
+    case "$n" in
+        0) echo status; return 0 ;;
+        k|K) echo tools:kunci; return 0 ;;
+        d|D) echo tools:disk; return 0 ;;
+    esac
     [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 1 ] && [ "$n" -le ${#ROMS[@]} ] || die "Pilihan ROM tidak ada"
     echo "${ROMS[$((n - 1))]}"
 }
@@ -129,9 +136,12 @@ pick_action() {
 args=()
 extra=""
 STATUS_URL="$RAW/Device_ingres_aospa/main/termius/build-status.sh"
+TOOLS_URL="$RAW/Device_ingres_aospa/main/termius/server-tools.sh"
+tools() { exec bash <(curl -fsSL "$TOOLS_URL?$(date +%s)") "$@"; }
 case "${1:-}" in
     status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
+    kunci|keys|backup|pulihkan|restore|disk) tools "$@" ;;
 esac
 if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
@@ -142,6 +152,7 @@ if [ $# -ge 1 ]; then
 else
     rom=$(pick_rom) || exit 1
     [ "$rom" = status ] && exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)")
+    case "$rom" in tools:*) tools "${rom#tools:}" ;; esac
     action=$(pick_action) || exit 1
     interactive=1
 fi
@@ -182,6 +193,18 @@ if [ "${interactive:-0}" = 1 ] && { [ -z "$action" ] || [ "$action" = build ]; }
     else
         echo "GApps: ${glist#*=}"
     fi
+
+    echo "${c_in}== Tanda tangan ==${c_0}"
+    nk=$(find "$HOME/.ingres-keys" -maxdepth 1 -name '*.pk8' 2>/dev/null | wc -l)
+    echo "  1) kingD2N (kunci LineageOS, ~/.ingres-keys)  [bawaan]"
+    echo "  2) kunci bawaan ROM (SIGN=0)"
+    [ "$nk" -gt 0 ] || echo "${c_wr}[!!]${c_0} Kunci belum ada di server: pulihkan dulu lewat menu k, atau build ini membuat kunci BARU."
+    read -rp "Nomor tanda tangan [1]: " n
+    case "${n:-1}" in
+        1) ;;
+        2) chosen="$chosen SIGN=0" ;;
+        *) die "Pilihan tanda tangan tidak ada" ;;
+    esac
 
     echo "Pengaturan tambahan (kosongkan kalau tidak ada), contoh: DECRYPT=0 GOFILE=0"
     read -rp "> " extra
