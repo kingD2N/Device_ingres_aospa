@@ -23,6 +23,7 @@
 #   JOBS=<angka>       jumlah job build (default: otomatis dari CPU & RAM)
 #   VARIANT=user       user (rilis, default) / userdebug (debug, adb root) / eng
 #   DECRYPT=0          /data terenkripsi seperti biasa (default: decrypt)
+#   SIGN=0             kunci bawaan ROM (default: tanda tangan kingD2N = kunci LineageOS, ~/.ingres-keys)
 #   GAPPS=1 / GAPPS=0  PenguinOS: paksa GApps (-gms) / vanilla (AOSPA selalu GApps)
 #   KERNEL=src         (default AOSPA & PenguinOS): kernel LineageOS 24 di-build dari source tiap build
 #   KERNEL=los24       kernel LineageOS 24 dari zip ROM (~/ingres-kernel-los24)
@@ -128,7 +129,7 @@ if [ -z "${TMUX:-}" ] && [ -z "${STY:-}" ] && [ "$CMD" != "clean" ] && [ "$CMD" 
         err "Sesi '$SESSION' sudah ada (satu build per akun). Masuk dengan: byobu attach -t $SESSION"
         exit 1
     fi
-    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}' GAPPS='${GAPPS:-}' KERNEL='$KERNEL'"
+    envs="ROM='$ROM' SRC='$SRC' VARIANT='$VARIANT' DECRYPT='${DECRYPT:-1}' SIGN='${SIGN:-1}' KEYS_DIR='${KEYS_DIR:-}' GOFILE='${GOFILE:-1}' GOFILE_TOKEN='${GOFILE_TOKEN:-}' JOBS='${JOBS:-}' GAPPS='${GAPPS:-}' KERNEL='$KERNEL'"
     byobu new-session -d -s "$SESSION" "$envs bash '$SCRIPT' $CMD; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read"
     ok "Build berjalan di sesi byobu '$SESSION' (aman kalau Termius ditutup)."
     echo "   Lihat layar build : byobu attach -t $SESSION   (keluar lagi: F6)"
@@ -285,6 +286,7 @@ unpatch_per_app_refresh_rate() {
 }
 
 unpatch_source() {
+    unpatch_signing
     unpatch_per_app_refresh_rate
     git -C hardware/qcom/display checkout -q -- composer/hwc_display.cpp 2>/dev/null || true
     git -C vendor/xiaomi/sm8450-common checkout -q -- Android.bp 2>/dev/null || true
@@ -520,6 +522,88 @@ do_sync() {
     ok "Source siap di $SRC"
 }
 
+# ---------------------------------------------- tanda tangan kingD2N
+# Semua ROM ingres ditandatangani kunci pribadi yang sama dengan LineageOS 24 (~/.ingres-keys).
+# Kunci dibuat sekali (oleh ROM mana pun yang dibuild pertama) lalu dipakai ulang semua ROM.
+# Kunci dipasang ke folder kunci yang dibaca ROM itu (vendor/<rom>-priv/keys); ROM tanpa
+# folder seperti itu mendapat -include di device.mk. SIGN=0 = pakai kunci bawaan ROM.
+SIGN_KEYS_DIR="${KEYS_DIR:-$HOME/.ingres-keys}"
+SIGN_KEY_NAMES="releasekey platform shared media networkstack sdk_sandbox bluetooth nfc verity testkey cyngn-app testcert"
+SIGN_SUBJECT="/C=ID/ST=Indonesia/L=Indonesia/O=kingD2N/OU=kingD2N/CN=kingD2N"
+SIGN_MARK="# ingres-sign"
+SIGN_DEVMK=device/xiaomi/ingres/device.mk
+sign_make_key() {   # $1 = nama kunci (dibuat di $SIGN_KEYS_DIR, tanpa password)
+    local k="$1" t top="$PWD"
+    if [ -x "$top/development/tools/make_key" ]; then
+        # make_key menolak path bertitik (".ingres-keys"): jalankan dari dalam folder kunci
+        (cd "$SIGN_KEYS_DIR" && echo | "$top/development/tools/make_key" "$k" "$SIGN_SUBJECT") >/dev/null 2>&1
+    fi
+    if ! [ -s "$SIGN_KEYS_DIR/$k.pk8" ] && command -v openssl >/dev/null 2>&1; then
+        rm -f "$SIGN_KEYS_DIR/$k.pk8" "$SIGN_KEYS_DIR/$k.x509.pem"
+        t=$(mktemp "$SIGN_KEYS_DIR/tmp.XXXXXX") || return 1
+        openssl genrsa -f4 2048 2>/dev/null > "$t" \
+            && openssl req -new -x509 -sha256 -key "$t" -out "$SIGN_KEYS_DIR/$k.x509.pem" \
+                   -days 10000 -subj "$SIGN_SUBJECT" 2>/dev/null \
+            && openssl pkcs8 -in "$t" -topk8 -outform DER -out "$SIGN_KEYS_DIR/$k.pk8" -nocrypt 2>/dev/null
+        rm -f "$t"
+    fi
+    [ -s "$SIGN_KEYS_DIR/$k.pk8" ] && [ -s "$SIGN_KEYS_DIR/$k.x509.pem" ]
+}
+sign_priv_dir() {   # folder kunci yang dibaca konfigurasi ROM, mis. vendor/lineage-priv/keys
+    grep -rhoE 'vendor/[A-Za-z0-9_.-]+-priv/keys' vendor/*/config vendor/*/*.mk 2>/dev/null \
+        | sort | uniq -c | sort -rn | awk 'NR==1 {print $2}' || true
+}
+unpatch_signing() {
+    [ -f "$SIGN_DEVMK" ] && sed -i "/$SIGN_MARK\$/d" "$SIGN_DEVMK"
+    return 0
+}
+setup_signing() {
+    local priv k made=0 viadev=""
+    unpatch_signing
+    if [ "${SIGN:-1}" = 0 ]; then
+        for priv in vendor/*-priv/keys; do
+            [ -f "$priv/.ingres-sign" ] && rm -rf "$priv"
+        done
+        info "Tanda tangan: kunci bawaan ROM (SIGN=0)"
+        return 0
+    fi
+    mkdir -p "$SIGN_KEYS_DIR" && chmod 700 "$SIGN_KEYS_DIR"
+    for k in $SIGN_KEY_NAMES; do
+        [ -s "$SIGN_KEYS_DIR/$k.pk8" ] && [ -s "$SIGN_KEYS_DIR/$k.x509.pem" ] && continue
+        sign_make_key "$k" || { err "Gagal membuat kunci $k, ROM memakai kunci bawaan"; return 0; }
+        made=$((made + 1))
+    done
+    chmod 600 "$SIGN_KEYS_DIR"/* 2>/dev/null || true
+    priv=$(sign_priv_dir)
+    if [ -z "$priv" ]; then
+        [ -f "$SIGN_DEVMK" ] || { err "Tanda tangan: $SIGN_DEVMK tidak ada, ROM memakai kunci bawaan"; return 0; }
+        priv=vendor/ingres-priv/keys; viadev=1
+    fi
+    rm -rf "$priv" && mkdir -p "$priv"
+    for k in $SIGN_KEY_NAMES; do
+        cp -f "$SIGN_KEYS_DIR/$k.pk8" "$SIGN_KEYS_DIR/$k.x509.pem" "$priv/"
+    done
+    echo "PRODUCT_DEFAULT_DEV_CERTIFICATE := $priv/releasekey" > "$priv/keys.mk"
+    cat > "$priv/BUILD.bazel" <<'BZL'
+filegroup(
+    name = "android_certificate_directory",
+    srcs = glob([
+        "*.pk8",
+        "*.pem",
+    ]),
+    visibility = ["//visibility:public"],
+)
+BZL
+    : > "$priv/.ingres-sign"
+    if [ -n "$viadev" ]; then
+        sed -i -e '$a\' "$SIGN_DEVMK"
+        echo "-include $priv/keys.mk $SIGN_MARK" >> "$SIGN_DEVMK"
+    fi
+    [ "$made" -gt 0 ] && info "Tanda tangan: $made kunci baru dibuat di $SIGN_KEYS_DIR (backup folder ini!)"
+    info "Tanda tangan kingD2N: kunci $SIGN_KEYS_DIR -> $priv${viadev:+ (lewat device.mk)}"
+    return 0
+}
+
 # ----------------------------------------------------------------- build
 do_build() {
     cd "$SRC" 2>/dev/null && [ -f build/envsetup.sh ] || { err "Source belum ada. Jalankan: bash $SCRIPT sync"; exit 1; }
@@ -537,6 +621,7 @@ do_build() {
     patch_source
     info "Varian build: $VARIANT"
     if [ "${DECRYPT:-1}" = 0 ]; then export TARGET_DECRYPTED_DATA=false; info "/data terenkripsi"; else export TARGET_DECRYPTED_DATA=true; info "/data tanpa enkripsi (decrypt)"; fi
+    setup_signing
     set +u   # rom-build.sh / envsetup.sh memakai variabel yang belum diisi
     local start rc
     start=$(date +%s)
