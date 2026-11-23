@@ -137,7 +137,10 @@ args=()
 extra=""
 STATUS_URL="$RAW/Device_ingres_aospa/main/termius/build-status.sh"
 TOOLS_URL="$RAW/Device_ingres_aospa/main/termius/server-tools.sh"
-tools() { exec bash <(curl -fsSL "$TOOLS_URL?$(date +%s)") "$@"; }
+tools() {
+    curl -fsSL -o "$HOME/server-tools.sh" "$TOOLS_URL?$(date +%s)" || die "Gagal unduh alat server, coba lagi sebentar"
+    exec bash "$HOME/server-tools.sh" "$@"
+}
 case "${1:-}" in
     status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
