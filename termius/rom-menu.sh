@@ -40,8 +40,9 @@ ROMS=(
     "rros;ResurrectedRemix OS;rros-;rros-17.0;build-rros.sh;ResurrectedRemixOS/manifest;^rr-[0-9]+\.[0-9]+$;;user;user,userdebug;1;1=GApps,0=Vanilla"
     "derpfest;DerpFest;derpfest-;derpfest-17;build-derpfest.sh;DerpFest-AOSP/android_manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;;=GApps bawaan (tidak ada vanilla)"
     "clover;The Clover Project;clover-;clover-17;build-clover.sh;The-Clover-Project/manifest;^[0-9]+(\.[0-9]+)?$;;user;user,userdebug;1;1=GApps,0=Vanilla"
+    "los24ttd;LineageOS + Tanda Tangan kingD2N;lineage-;lineage-24.0;build-ingres.sh;LineageOS/android;^lineage-[0-9]+\.[0-9]+$;SIGN=1 MAINTAINER=kingD2N;user;user,userdebug;1;1=GApps,0=Vanilla,both=GApps + Vanilla"
 )
-ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest cloverproject=clover theclover=clover"
+ALIASES="rr=rros resurrected=rros remix=rros resurrectedremix=rros crdroidandroid=crdroid cr=crdroid lineage=los24 los=los24 pixel=pixelos alphadroid=alpha infinityx=infinity uwuaosp=uwu derp=derpfest derpfestaosp=derpfest cloverproject=clover theclover=clover ttd=los24ttd tandatangan=los24ttd lineagettd=los24ttd los24sign=los24ttd signed=los24ttd"
 # Branch device tree yang dilewati (source resmi privat / belum bisa dibuild)
 BLOCKED=" alpha-17.0 "
 ACTIONS=(
