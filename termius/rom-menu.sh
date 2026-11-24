@@ -9,6 +9,7 @@
 #   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean, bersih
 #   GAPPS=0 bash <(curl -fsSL .../rom-menu.sh) lunaris # pengaturan ditulis di depan seperti biasa
 #   bash <(curl -fsSL .../rom-menu.sh) kunci           # alat server: kunci, backup, pulihkan, disk
+#   bash <(curl -fsSL .../rom-menu.sh) kernel          # menu build kernel (kernel-menu.sh)
 #
 # Pembaruan otomatis:
 #  - Menu ini dan script build ROM selalu diunduh versi terbaru dari GitHub.
@@ -109,9 +110,12 @@ pick_rom() {
     echo "   0) Lihat semua build yang sedang berjalan" >&2
     echo "   k) Kunci tanda tangan: cek / backup / pulihkan" >&2
     echo "   d) Ruang disk & folder ROM di server" >&2
+    echo "${c_in}== Kernel ==${c_0}" >&2
+    echo "  kr) Build kernel (Melt / LineageOS 24 / Stock HyperOS / Avalon / Linux 6.6)" >&2
     read -rp "Nomor ROM / huruf: " n
     case "$n" in
         0) echo status; return 0 ;;
+        kr|KR|kernel) echo kernel; return 0 ;;
         k|K) echo tools:kunci; return 0 ;;
         d|D) echo tools:disk; return 0 ;;
     esac
@@ -137,6 +141,7 @@ args=()
 extra=""
 STATUS_URL="$RAW/Device_ingres_aospa/main/termius/build-status.sh"
 TOOLS_URL="$RAW/Device_ingres_aospa/main/termius/server-tools.sh"
+KERNEL_URL="$RAW/Device_ingres_aospa/main/termius/kernel-menu.sh"
 tools() {
     curl -fsSL -o "$HOME/server-tools.sh" "$TOOLS_URL?$(date +%s)" || die "Gagal unduh alat server, coba lagi sebentar"
     exec bash "$HOME/server-tools.sh" "$@"
@@ -145,6 +150,7 @@ case "${1:-}" in
     status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
     kunci|keys|backup|pulihkan|restore|disk) tools "$@" ;;
+    kernel|kr) shift; exec bash <(curl -fsSL "$KERNEL_URL?$(date +%s)") "$@" ;;
 esac
 if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
@@ -155,6 +161,7 @@ if [ $# -ge 1 ]; then
 else
     rom=$(pick_rom) || exit 1
     [ "$rom" = status ] && exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)")
+    [ "$rom" = kernel ] && exec bash <(curl -fsSL "$KERNEL_URL?$(date +%s)")
     case "$rom" in tools:*) tools "${rom#tools:}" ;; esac
     action=$(pick_action) || exit 1
     interactive=1

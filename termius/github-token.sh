@@ -31,6 +31,8 @@ fi
 
 echo "Buat token di GitHub: Settings > Developer settings > Personal access tokens."
 echo "Pilih Fine-grained token, akses 'Public repositories (read-only)', tanpa izin lain."
+echo "Untuk build kernel juga (menu kernel): pilih 'Only select repositories' > Kernel_NoMount_ingres,"
+echo "izin Contents = Read-only. Token itu tetap bisa membaca semua repo publik."
 echo "Tempel token di bawah (tidak tampil di layar), lalu Enter."
 printf 'Token: '
 IFS= read -rs TOKEN
@@ -47,6 +49,11 @@ unset TOKEN
 info "Tes akses GitHub..."
 if GIT_TERMINAL_PROMPT=0 git ls-remote https://github.com/Lunaris-AOSP/art.git HEAD 2>/dev/null | grep -q HEAD; then
     ok "Token bekerja. Sekarang jalankan sync lagi dari menu (perintah 4)."
+    if GIT_TERMINAL_PROMPT=0 git ls-remote https://github.com/kingD2N/Kernel_NoMount_ingres HEAD 2>/dev/null | grep -q HEAD; then
+        ok "Token juga bisa membaca workflow kernel (menu kernel siap dipakai)."
+    else
+        info "Token ini belum bisa membaca Kernel_NoMount_ingres (hanya perlu untuk menu kernel)."
+    fi
 else
     err "Tes gagal (token salah/kedaluwarsa, atau IP server masih diblokir GitHub)."
     echo "Cek token lalu coba lagi. Hapus dengan: bash <(curl -fsSL https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/termius/github-token.sh) hapus"

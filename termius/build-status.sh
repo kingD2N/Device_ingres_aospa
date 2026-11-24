@@ -25,6 +25,7 @@ ROMS=(
     "rros|ResurrectedRemix OS|build.log"
     "derpfest|DerpFest|build-derpfest.log"
     "clover|The Clover Project|build-clover.log"
+    "kernel|Kernel ingres|build-kernel.log"
 )
 
 c_ok=$'\033[1;32m'; c_wr=$'\033[1;33m'; c_er=$'\033[1;31m'; c_in=$'\033[1;34m'; c_dm=$'\033[2m'; c_0=$'\033[0m'
@@ -66,10 +67,14 @@ show_rom() {  # kunci nama log dibuat_epoch
     if procs_has 'ninja|soong_ui|soong_build'; then phase="build"
     elif procs_has 'repo (sync|init)|git fetch|git clone'; then phase="sync"
     fi
+    if [ "$key" = kernel ]; then   # langkah workflow kernel, mis. "[7/11] Compile Kernel"
+        phase=$(tail -c 300000 "$log" 2>/dev/null | sed "$STRIP" | grep -a -o '\[[0-9]*/[0-9]*\] .*' | tail -n 1 | cut -c1-60)
+        phase="${phase:-menunggu}"
+    fi
     echo "${c_ok}●${c_0} ${c_in}${name}${c_0}  ${c_dm}(sesi '$key', jalan $up)${c_0}"
     echo "   Tahap  : $phase${prog:+  $prog}${sync:+  $sync}"
     if [ "$age" -ge 0 ]; then
-        if [ "$age" -gt 900 ] && ! procs_has 'ninja|soong_ui|soong_build|repo sync|git fetch|git clone'; then
+        if [ "$age" -gt 900 ] && ! procs_has 'ninja|soong_ui|soong_build|repo sync|git fetch|git clone|ld\.lld|clang'; then
             echo "   Log    : ${c_wr}tidak bergerak $(dur "$age") dan tidak ada proses build/sync (mungkin macet atau menunggu)${c_0}"
         else
             echo "   Log    : diperbarui $(dur "$age") lalu"
