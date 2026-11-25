@@ -32,7 +32,7 @@ LOG="$HOME/build-kernel.log"
 HASIL="$HOME/hasil-kernel"
 SESSION=kernel
 # sesi build ROM (lihat build-status.sh) - satu build per akun
-ROM_SESSIONS="evox los24 pixelos lunaris alpha axion ascp infinity uwu aospa penguin crdroid rros derpfest clover"
+ROM_SESSIONS="evox los24 pixelos lunaris alpha axion ascp infinity uwu aospa penguin crdroid rros derpfest clover twrp ofox"
 
 c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_wr=$'\e[1;33m'; c_er=$'\e[1;31m'; c_dm=$'\e[2m'; c_0=$'\e[0m'
 ok()   { echo "${c_ok}[OK]${c_0} $*"; }

@@ -9,6 +9,8 @@
 #   bash <(curl -fsSL .../rom-menu.sh) evox status     # perintah lain: build, sync, status, upload, clean, bersih
 #   GAPPS=0 bash <(curl -fsSL .../rom-menu.sh) lunaris # pengaturan ditulis di depan seperti biasa
 #   bash <(curl -fsSL .../rom-menu.sh) kunci           # alat server: kunci, backup, pulihkan, disk
+#   bash <(curl -fsSL .../rom-menu.sh) twrp            # build TWRP (twrp-menu.sh: build/sync/status/stop/upload)
+#   bash <(curl -fsSL .../rom-menu.sh) ofox            # build OrangeFox (menu manifest/branch/varian/patch)
 #   bash <(curl -fsSL .../rom-menu.sh) kernel          # menu build kernel (kernel-menu.sh)
 #
 # Pembaruan otomatis:
@@ -58,6 +60,7 @@ ACTIONS=(
 
 c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_wr=$'\e[1;33m'; c_er=$'\e[1;31m'; c_0=$'\e[0m'
 die() { echo "${c_er}[GAGAL]${c_0} $*" >&2; exit 1; }
+info() { echo "${c_in}[..]${c_0} $*"; }
 
 # Nomor versi Android dari nama branch, untuk dibandingkan: 17, 16.2, lineage-24.0,
 # seventeen, cnb (kode huruf: u=14 v=15 b=16 c=17 d=18 ...). Gagal kalau tidak dikenali.
@@ -112,10 +115,15 @@ pick_rom() {
     echo "   d) Ruang disk & folder ROM di server" >&2
     echo "${c_in}== Kernel ==${c_0}" >&2
     echo "  kr) Build kernel (Melt / LineageOS 24 / Stock HyperOS / Avalon / Linux 6.6)" >&2
+    echo "${c_in}== Recovery ==${c_0}" >&2
+    echo "  tw) Build TWRP (Recovery Project™, twrp-12.1)" >&2
+    echo "  of) Build OrangeFox (fox_12.1 / fox_16.0 / fox_14.1)" >&2
     read -rp "Nomor ROM / huruf: " n
     case "$n" in
         0) echo status; return 0 ;;
         kr|KR|kernel) echo kernel; return 0 ;;
+        tw|TW|twrp) echo twrp; return 0 ;;
+        of|OF|ofox|orangefox) echo ofox; return 0 ;;
         k|K) echo tools:kunci; return 0 ;;
         d|D) echo tools:disk; return 0 ;;
     esac
@@ -142,6 +150,29 @@ extra=""
 STATUS_URL="$RAW/Device_ingres_aospa/main/termius/build-status.sh"
 TOOLS_URL="$RAW/Device_ingres_aospa/main/termius/server-tools.sh"
 KERNEL_URL="$RAW/Device_ingres_aospa/main/termius/kernel-menu.sh"
+TWRP_URL="$RAW/Device_ingres_aospa/main/termius/twrp-menu.sh"
+OFOX_URL="$RAW/device_xiaomi_ingres_recovery/OFOX/server/build_ofox_ingres.sh"
+# OrangeFox: script kingD2N/device_xiaomi_ingres_recovery (branch OFOX) punya menu sendiri ->
+# dijalankan di sesi byobu 'ofox' lalu langsung dibuka, supaya menunya bisa dipilih dan
+# build tetap jalan kalau Termius ditutup (keluar dari layar build: F6).
+ofox() {
+    local f="$HOME/build_ofox_ingres.sh" a q=""
+    curl -fsSL -o "$f.new" "$OFOX_URL?$(date +%s)" || die "Gagal unduh script OrangeFox, coba lagi sebentar"
+    bash -n "$f.new" || die "Script OrangeFox yang diunduh rusak, coba lagi"
+    mv -f "$f.new" "$f"
+    for a in "$@"; do q="$q '${a//\'/}'"; done
+    if [ -n "${TMUX:-}" ] || [ -n "${STY:-}" ]; then exec bash "$f" "$@"; fi
+    command -v byobu >/dev/null || die "byobu tidak ada di server"
+    if { tmux has-session -t "=ofox" || byobu has-session -t "=ofox"; } >/dev/null 2>&1; then
+        info "Build OrangeFox sudah berjalan, membuka layarnya (keluar lagi: F6)"
+        exec byobu attach -t ofox
+    fi
+    [ "${MENU_DRY:-0}" = 1 ] && { echo "DRY: bash $f$q"; exit 0; }
+    byobu new-session -d -s ofox "RESYNC='${RESYNC:-0}' bash '$f'$q 2>&1 | tee '$HOME/build-ofox.log'; echo; echo 'Selesai. Tekan Enter untuk menutup.'; read" \
+        || die "Gagal membuat sesi byobu 'ofox'"
+    info "OrangeFox jalan di sesi byobu 'ofox'. Pilih menu, lalu tekan F6 untuk keluar (build tetap jalan)."
+    exec byobu attach -t ofox
+}
 tools() {
     curl -fsSL -o "$HOME/server-tools.sh" "$TOOLS_URL?$(date +%s)" || die "Gagal unduh alat server, coba lagi sebentar"
     exec bash "$HOME/server-tools.sh" "$@"
@@ -151,6 +182,8 @@ case "${1:-}" in
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
     kunci|keys|backup|pulihkan|restore|disk) tools "$@" ;;
     kernel|kr) shift; exec bash <(curl -fsSL "$KERNEL_URL?$(date +%s)") "$@" ;;
+    twrp|tw) shift; exec bash <(curl -fsSL "$TWRP_URL?$(date +%s)") "$@" ;;
+    ofox|of|orangefox) shift; ofox "$@" ;;
 esac
 if [ $# -ge 1 ]; then
     rom=$(find_rom "$1") || die "ROM '$1' tidak dikenal. Pilihan: $(printf '%s ' "${ROMS[@]%%;*}")"
@@ -162,6 +195,8 @@ else
     rom=$(pick_rom) || exit 1
     [ "$rom" = status ] && exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)")
     [ "$rom" = kernel ] && exec bash <(curl -fsSL "$KERNEL_URL?$(date +%s)")
+    [ "$rom" = twrp ] && exec bash <(curl -fsSL "$TWRP_URL?$(date +%s)")
+    [ "$rom" = ofox ] && ofox
     case "$rom" in tools:*) tools "${rom#tools:}" ;; esac
     action=$(pick_action) || exit 1
     interactive=1
