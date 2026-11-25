@@ -12,6 +12,11 @@
 # dikirim ke mana pun: backup hanya ditulis di home server, ambil sendiri lewat SFTP.
 set -u
 
+# [cd-home] Mulai selalu dari folder home: folder terminal saat ini bisa saja sudah
+# dihapus (mis. ~/evox setelah bersih), dan git/repo gagal "Unable to read current
+# working directory" kalau dijalankan dari folder yang sudah tidak ada.
+cd "$HOME" 2>/dev/null || cd /
+
 KEYS_DIR="${KEYS_DIR:-$HOME/.ingres-keys}"
 c_ok=$'\e[1;32m'; c_in=$'\e[1;34m'; c_wr=$'\e[1;33m'; c_er=$'\e[1;31m'; c_dm=$'\e[2m'; c_0=$'\e[0m'
 ok()   { echo "${c_ok}[OK]${c_0} $*"; }

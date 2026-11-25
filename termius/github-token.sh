@@ -9,6 +9,11 @@
 # dan ~/.gitconfig lain tidak diubah selain menambah credential.helper store bila belum ada.
 set -u
 
+# [cd-home] Mulai selalu dari folder home: folder terminal saat ini bisa saja sudah
+# dihapus (mis. ~/evox setelah bersih), dan git/repo gagal "Unable to read current
+# working directory" kalau dijalankan dari folder yang sudah tidak ada.
+cd "$HOME" 2>/dev/null || cd /
+
 info() { echo -e "\033[1;34m[..]\033[0m $*"; }
 ok()   { echo -e "\033[1;32m[OK]\033[0m $*"; }
 err()  { echo -e "\033[1;31m[GAGAL]\033[0m $*" >&2; }

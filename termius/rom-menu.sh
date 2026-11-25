@@ -22,6 +22,11 @@
 
 set -uo pipefail
 
+# [cd-home] Mulai selalu dari folder home: folder terminal saat ini bisa saja sudah
+# dihapus (mis. ~/evox setelah bersih), dan git/repo gagal "Unable to read current
+# working directory" kalau dijalankan dari folder yang sudah tidak ada.
+cd "$HOME" 2>/dev/null || cd /
+
 RAW=https://raw.githubusercontent.com/kingD2N
 GH=https://github.com
 DEV=android_device_xiaomi_ingres-old

@@ -9,6 +9,11 @@
 # Hanya membaca (sesi, log, proses). Tidak mengubah build apa pun.
 set -u
 
+# [cd-home] Mulai selalu dari folder home: folder terminal saat ini bisa saja sudah
+# dihapus (mis. ~/evox setelah bersih), dan git/repo gagal "Unable to read current
+# working directory" kalau dijalankan dari folder yang sudah tidak ada.
+cd "$HOME" 2>/dev/null || cd /
+
 # kunci|nama|file log di $HOME
 ROMS=(
     "evox|Evolution X|build-evox.log"

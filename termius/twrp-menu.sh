@@ -21,6 +21,11 @@
 
 set -uo pipefail
 
+# [cd-home] Mulai selalu dari folder home: folder terminal saat ini bisa saja sudah
+# dihapus (mis. ~/evox setelah bersih), dan git/repo gagal "Unable to read current
+# working directory" kalau dijalankan dari folder yang sudah tidak ada.
+cd "$HOME" 2>/dev/null || cd /
+
 RAW=https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/termius
 MANIFEST_URL=https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git
 MANIFEST_BRANCH="${MANIFEST_BRANCH:-twrp-12.1}"
@@ -142,6 +147,10 @@ run_inside() {
     if grep -rlq "Team Win Recovery Project" bootable/recovery/ 2>/dev/null; then
         grep -rl "Team Win Recovery Project" bootable/recovery/ | xargs sed -i 's/Team Win Recovery Project/Recovery Project™/g'
         ok "Nama TWRP diganti \"Recovery Project™\""
+    fi
+    # sama dengan workflow: log merah "harmless" setelah flash ROM (mount super VAB) -> recovery.log
+    if [ -f "$DEVICE_PATH/patches/twrp_quiet_logs.py" ]; then
+        python3 "$DEVICE_PATH/patches/twrp_quiet_logs.py" bootable/recovery && ok "Log merah harmless dipindah ke recovery.log"
     fi
 
     info "Build recovery.img (lunch $PRODUCT-eng)"
