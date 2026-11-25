@@ -180,7 +180,7 @@ tools() {
 case "${1:-}" in
     status) exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") ;;
     live)   exec bash <(curl -fsSL "$STATUS_URL?$(date +%s)") w ;;
-    kunci|keys|backup|pulihkan|restore|disk) tools "$@" ;;
+    kunci|keys|backup|pulihkan|restore|disk|cekttd|cek-ttd) tools "$@" ;;
     kernel|kr) shift; exec bash <(curl -fsSL "$KERNEL_URL?$(date +%s)") "$@" ;;
     twrp|tw) shift; exec bash <(curl -fsSL "$TWRP_URL?$(date +%s)") "$@" ;;
     ofox|of|orangefox) shift; ofox "$@" ;;

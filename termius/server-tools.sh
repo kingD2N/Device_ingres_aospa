@@ -5,6 +5,7 @@
 #   bash <(curl -fsSL https://raw.githubusercontent.com/kingD2N/Device_ingres_aospa/main/termius/server-tools.sh) kunci
 #   bash <(curl -fsSL .../server-tools.sh) backup              # backup kunci ke ~/ingres-keys-backup-<tanggal>.tgz
 #   bash <(curl -fsSL .../server-tools.sh) pulihkan [file.tgz] # pulihkan kunci dari backup
+#   bash <(curl -fsSL .../server-tools.sh) cekttd evox         # cek tanda tangan zip ROM terbaru
 #   bash <(curl -fsSL .../server-tools.sh) disk                # ruang disk, folder source & hasil ROM
 #
 # Kunci tanda tangan kingD2N dipakai SEMUA ROM (sama dengan LineageOS 24). Kunci tidak pernah
@@ -117,16 +118,49 @@ do_restore() {
     ok "Kunci dipulihkan: $(key_count) kunci, sidik jari releasekey $(fp "$KEYS_DIR/releasekey.x509.pem")"
 }
 
+# Cek tanda tangan zip ROM hasil build: cocokkan otacert dengan releasekey di ~/.ingres-keys
+# $1 = nama ROM (evox, crdroid, ...) -> zip terbaru di ~/hasil-<rom>; kosong = semua hasil-*
+check_sign() {
+    local rom="${1:-}" z zips=() c a b subj d
+    b=$(openssl x509 -in "$KEYS_DIR/releasekey.x509.pem" -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)
+    [ -n "$b" ] || warn "Kunci $KEYS_DIR belum ada, hanya menampilkan pemilik sertifikat"
+    if [ -n "$rom" ]; then
+        d="$HOME/hasil-${rom#hasil-}"
+        [ -d "$d" ] || die "Folder $d tidak ada"
+        z=$(ls -t "$d"/*.zip 2>/dev/null | head -n 1)
+        [ -n "$z" ] && zips+=("$z")
+    else
+        for d in "$HOME"/hasil-*/; do
+            z=$(ls -t "$d"*.zip 2>/dev/null | head -n 1)
+            [ -n "$z" ] && zips+=("$z")
+        done
+    fi
+    [ ${#zips[@]} -gt 0 ] || die "Belum ada zip ROM${rom:+ di ~/hasil-${rom#hasil-}}"
+    for z in "${zips[@]}"; do
+        echo "${c_in}== $(basename "$z")${c_0}"
+        c=$(unzip -p "$z" META-INF/com/android/otacert 2>/dev/null)
+        if [ -z "$c" ]; then warn "Tidak ada META-INF/com/android/otacert (bukan zip ROM?)"; continue; fi
+        subj=$(echo "$c" | openssl x509 -noout -subject 2>/dev/null | sed 's/^subject= *//')
+        a=$(echo "$c" | openssl x509 -noout -fingerprint -sha256 2>/dev/null | cut -d= -f2)
+        echo "   Pemilik : $subj"
+        if [ -n "$b" ] && [ "$a" = "$b" ]; then ok "Ditandatangani kunci kingD2N ($KEYS_DIR)"
+        elif echo "$subj" | grep -q 'android@android.com\|CN *= *Android'; then warn "Kunci uji bawaan (test-keys), BUKAN kunci kingD2N"
+        else warn "BUKAN kunci $KEYS_DIR"; fi
+    done
+}
+
 keys_menu() {
     key_status
     echo
     echo "  1) Backup kunci sekarang"
     echo "  2) Pulihkan kunci dari backup"
+    echo "  3) Cek tanda tangan zip ROM hasil build"
     echo "  0) Keluar"
     read -rp "Nomor [0]: " n
     case "${n:-0}" in
         1) do_backup ;;
         2) read -rp "File backup (kosongkan = backup terbaru di home): " f; do_restore "$f" ;;
+        3) read -rp "ROM (mis. evox, crdroid; kosongkan = semua): " f; check_sign "$f" ;;
         *) ;;
     esac
 }
@@ -160,5 +194,6 @@ case "${1:-kunci}" in
     backup)       do_backup ;;
     pulihkan|restore) do_restore "${2:-}" ;;
     disk|d)       disk_info ;;
+    cekttd|cek-ttd|cek) check_sign "${2:-}" ;;
     *) die "Perintah tidak dikenal: $1 (pilihan: kunci, status, backup, pulihkan, disk)" ;;
 esac
