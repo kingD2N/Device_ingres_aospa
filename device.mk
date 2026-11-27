@@ -66,6 +66,8 @@ PRODUCT_SHIPPING_API_LEVEL := 31
 # Paket tambahan: GameKeys, LED, Dolby Lunaris, JamesDSP, MIUI Camera
 # (vendor/ingres/addons, lihat local manifest)
 INGRES_ADDONS_ROM := aospa
+# Ingres Parts (baterai, thermal, mode game, layar & sentuhan, speaker)
+INGRES_ADDONS_PARTS := true
 $(call inherit-product-if-exists, vendor/ingres/addons/addons.mk)
 
 # Vendor blobs
