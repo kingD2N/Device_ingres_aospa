@@ -36,6 +36,4 @@ TARGET_VENDOR_PROP += $(DEVICE_PATH)/properties/vendor.prop
 
 # Paket tambahan (GameKeys, LED, Dolby Lunaris, JamesDSP, MIUI Camera)
 INGRES_ADDONS_ROM := aospa
-# Ingres Parts
-INGRES_ADDONS_PARTS := true
 -include vendor/ingres/addons/BoardConfigAddons.mk
