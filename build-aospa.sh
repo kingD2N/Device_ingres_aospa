@@ -539,16 +539,20 @@ patch_source() {
 
 # ------------------------------------------------------------------ sync
 do_sync() {
-    # aturan server: hanya 1 source ROM per akun
-    local other
+    # aturan server: maksimal 2 source ROM per akun (termasuk ROM ini)
+    local other others="" n_other=0
     for other in "$HOME"/*/.repo; do
         [ -d "$other" ] || continue
         other="$(dirname "$other")"
         [ "$(readlink -f "$other")" = "$(readlink -f "$SRC")" ] && continue
-        err "Ada source ROM lain: $other (server hanya mengizinkan 1 source ROM)."
-        echo "   Simpan dulu zip-nya kalau perlu, lalu hapus: bash $SCRIPT bersih $other"
-        exit 1
+        others="$others $other"
+        n_other=$((n_other + 1))
     done
+    if [ "$n_other" -ge 2 ]; then
+        err "Sudah ada $n_other source ROM lain:$others (server maksimal 2 source ROM)."
+        echo "   Simpan dulu zip-nya kalau perlu, lalu hapus salah satu: bash $SCRIPT bersih <folder>"
+        exit 1
+    fi
     mkdir -p "$SRC" && cd "$SRC" || exit 1
     local cur_url cur_branch
     cur_url=$(git -C .repo/manifests config remote.origin.url 2>/dev/null || true)
