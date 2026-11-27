@@ -4,7 +4,7 @@
 #   ROM=aospa   (default) Paranoid Android calcite
 #   ROM=penguin           PenguinOS celerity (turunan AOSPA calcite)
 # Kedua ROM memakai satu folder source yang sama (~/aospa), sesuai aturan
-# server "1 source ROM per akun"; pindah ROM cukup sync ulang.
+# server "maksimal 2 source ROM per akun"; pindah ROM cukup sync ulang.
 #
 #   bash build-aospa.sh            # sync + build (otomatis jalan di byobu)
 #   bash build-aospa.sh sync       # hanya sync source

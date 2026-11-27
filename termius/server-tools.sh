@@ -187,7 +187,7 @@ disk_info() {
         printf '   %-20s %s%s%s\n' "$name" "$ls" "${ls:+${lh:+  |  }}" "$lh"
     done
     [ "$any" = 1 ] || echo "   (belum ada source / hasil ROM)"
-    echo "   ${c_dm}Satu akun hanya boleh 1 source ROM. Hapus source ROM lain lewat menu ROM > perintah 'bersih'.${c_0}"
+    echo "   ${c_dm}Satu akun maksimal 2 source ROM. Hapus source ROM lain lewat menu ROM > perintah 'bersih'.${c_0}"
     echo
     if [ "$(key_count)" -gt 0 ]; then ok "Kunci tanda tangan: $(key_count) kunci di $KEYS_DIR"
     else warn "Kunci tanda tangan belum ada di $KEYS_DIR (menu k untuk memulihkan)"; fi

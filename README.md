@@ -24,7 +24,7 @@ AOSPA calcite, jadi memakai device tree, kernel, dan vendor yang sama. Cukup tam
 ROM=penguin bash ~/build-aospa.sh
 ```
 
-Source memakai folder yang sama (`~/aospa`, aturan server: 1 source ROM per akun);
+Source memakai folder yang sama (`~/aospa`, aturan server: maksimal 2 source ROM per akun);
 script mengganti manifest lalu sync ulang hanya bagian yang berbeda. Local manifest:
 `local_manifests/ingres-penguin.xml`. Hasil di `~/hasil-penguin` (+ link GoFile).
 PenguinOS default membawa GApps (build `-gms`); vanilla: `GAPPS=0 ROM=penguin bash ~/build-aospa.sh`.
